@@ -1,14 +1,31 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { 
+  GraduationCap, 
+  BookOpen, 
+  ShieldCheck, 
+  Lock, 
+  User, 
+  KeyRound, 
+  AlertCircle, 
+  ArrowRight, 
+  Sparkles, 
+  CheckCircle2, 
+  Eye, 
+  EyeOff,
+  Clock,
+  Laptop
+} from 'lucide-react';
 import { loginUser } from '../services/storage';
 
 const Login = ({ onLoginSuccess }) => {
-  // 'choice' (tampilan awal 2 kartu opsi), 'Mahasiswa', atau 'Dosen'
-  const [selectedRole, setSelectedRole] = useState(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState('Mahasiswa'); // 'Mahasiswa' or 'Dosen'
+  const [username, setUsername] = useState('105022410021');
+  const [password, setPassword] = useState('123');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSelectRole = (role) => {
+  const handleRoleChange = (role) => {
     setSelectedRole(role);
     setErrorMsg('');
     if (role === 'Mahasiswa') {
@@ -25,23 +42,29 @@ const Login = ({ onLoginSuccess }) => {
     setErrorMsg('');
 
     if (!username.trim() || !password.trim()) {
-      setErrorMsg(`Mohon isi ${selectedRole === 'Mahasiswa' ? 'NIM' : 'Username'} dan password.`);
+      setErrorMsg(`Mohon masukkan ${selectedRole === 'Mahasiswa' ? 'NIM' : 'Username'} dan kata sandi Anda.`);
       return;
     }
 
-    const result = loginUser(username.trim(), password.trim());
-    if (!result.success) {
-      setErrorMsg(result.message);
-      return;
-    }
+    setLoading(true);
 
-    // Validasi apakah peran akun cocok dengan opsi login yang dipilih
-    if (result.user.role !== selectedRole) {
-      setErrorMsg(`Akun ini adalah akun ${result.user.role}. Silakan gunakan opsi Login ${result.user.role}.`);
-      return;
-    }
+    setTimeout(() => {
+      const result = loginUser(username.trim(), password.trim());
+      setLoading(false);
 
-    onLoginSuccess(result.user);
+      if (!result.success) {
+        setErrorMsg(result.message);
+        return;
+      }
+
+      // Validasi role pengguna
+      if (result.user.role !== selectedRole) {
+        setErrorMsg(`Akun ini terdaftar sebagai ${result.user.role}. Silakan beralih ke tab Login ${result.user.role}.`);
+        return;
+      }
+
+      onLoginSuccess(result.user);
+    }, 350);
   };
 
   const setPreset = (u, p) => {
@@ -52,275 +75,339 @@ const Login = ({ onLoginSuccess }) => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#F8FAFC' }}>
-      {/* Top Header Branding */}
-      <header style={{ backgroundColor: '#1E3A8A', color: '#FFFFFF', padding: '16px 28px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Top Navbar */}
+      <header className="nav-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '38px', height: '38px', backgroundColor: '#FFFFFF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: '#1E3A8A', fontWeight: 'bold' }}>
-            🎓
+          <div style={{
+            width: '38px',
+            height: '38px',
+            background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF'
+          }}>
+            <GraduationCap size={22} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 'bold', margin: 0, color: '#FFFFFF' }}>SiLab Exam System</h1>
-            <p style={{ fontSize: '0.75rem', color: '#93C5FD', margin: 0 }}>Fakultas Ilmu Komputer — Universitas Klabat</p>
+            <h1 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>SiLab Exam System</h1>
+            <p style={{ fontSize: '0.72rem', color: '#93C5FD', margin: 0 }}>Fakultas Ilmu Komputer — Universitas Klabat</p>
           </div>
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#CBD5E1', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22C55E' }}></span>
-          Sistem Ujian Anti-Curang Aktif
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#34D399', background: 'rgba(16, 185, 129, 0.15)', padding: '5px 12px', borderRadius: '9999px', border: '1px solid rgba(52, 211, 153, 0.3)', fontWeight: 600 }}>
+          <ShieldCheck size={14} />
+          <span>Pengawasan Anti-Curang Aktif</span>
         </div>
       </header>
 
-      {/* Main Landing Area */}
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px 20px' }}>
-        <div style={{ width: '100%', maxWidth: selectedRole ? '460px' : '780px', transition: 'all 0.3s ease' }}>
-          
-          {/* Judul & Hero */}
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <h2 style={{ color: '#0F172A', fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>
-              Selamat Datang di Portal Ujian
-            </h2>
-            <p style={{ color: '#64748B', fontSize: '0.95rem', maxWidth: '580px', margin: '0 auto', lineHeight: 1.5 }}>
-              Platform evaluasi akademik berbasis web dengan pengawasan anti-curang otomatis terintegrasi. Silakan pilih jenis akses masuk Anda.
-            </p>
+      {/* Main Content Area */}
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '36px 20px' }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '1020px',
+          display: 'grid',
+          gridTemplateColumns: '1.15fr 1fr',
+          backgroundColor: '#FFFFFF',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.1)',
+          border: '1px solid #E2E8F0'
+        }}>
+          {/* Left Hero Panel */}
+          <div style={{
+            background: 'linear-gradient(145deg, #0F172A 0%, #1E3A8A 50%, #1D4ED8 100%)',
+            color: '#FFFFFF',
+            padding: '48px 40px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            position: 'relative'
+          }}>
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.12)',
+                backdropFilter: 'blur(10px)',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: '#93C5FD',
+                marginBottom: '24px',
+                border: '1px solid rgba(255, 255, 255, 0.15)'
+              }}>
+                <Sparkles size={14} color="#FBBF24" />
+                <span>Ujian Akademik Terstandarisasi</span>
+              </div>
+
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, lineHeight: 1.25, marginBottom: '16px', letterSpacing: '-0.02em' }}>
+                Platform Ujian Cerdas & Berintegritas Tinggi
+              </h2>
+
+              <p style={{ fontSize: '0.95rem', color: '#CBD5E1', lineHeight: 1.6, marginBottom: '32px' }}>
+                Sistem Ujian Berbasis Web Fakultas Ilmu Komputer UNKLAB dirancang untuk menjamin kejujuran pengerjaan soal secara real-time dengan pengawasan cerdas otomatis.
+              </p>
+
+              {/* Feature Badges */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(96, 165, 250, 0.3)' }}>
+                    <ShieldCheck size={18} color="#60A5FA" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>Deteksi Pindah Tab & Jendela</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Pencatatan instan saat browser kehilangan fokus</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+                    <Lock size={18} color="#34D399" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>Proteksi Salin-Tempel (Clipboard)</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Blokir copy, paste, cut, & klik kanan context menu</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                    <Clock size={18} color="#FBBF24" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>Auto-Save & Bukti Ujian Digital</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Jawaban tersimpan aman setiap detik ke database</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Citation */}
+            <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.75rem', color: '#94A3B8' }}>
+              Mata Kuliah: <strong style={{ color: '#E2E8F0' }}>Sistem Analisis & Desain (SAD)</strong><br />
+              Dosen Pengampu: <span style={{ color: '#E2E8F0' }}>George M. W. Tangka, S.Kom., MBA</span>
+            </div>
           </div>
 
-          {/* OPSI 1: TAMPILAN AWAL 2 KARTU OPSI (LOGIN MAHASISWA & LOGIN DOSEN) */}
-          {!selectedRole && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '22px' }}>
-              
-              {/* Kartu 1: Login Mahasiswa */}
-              <div 
-                className="card"
-                style={{ 
-                  padding: '30px 24px', 
-                  borderRadius: '12px', 
-                  textAlign: 'center', 
-                  border: '2px solid #E2E8F0',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s ease',
-                  backgroundColor: '#FFFFFF',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#2563EB';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(37, 99, 235, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
-                }}
-                onClick={() => handleSelectRole('Mahasiswa')}
-              >
-                <div>
-                  <div style={{ width: '70px', height: '70px', backgroundColor: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 16px auto', border: '1px solid #BFDBFE' }}>
-                    👨‍🎓
-                  </div>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#1E3A8A', marginBottom: '8px' }}>
-                    Login Mahasiswa
-                  </h3>
-                  <p style={{ color: '#64748B', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '20px' }}>
-                    Akses ruang ujian, verifikasi PIN ujian, pengerjaan soal dengan auto-save, dan unduh tanda terima bukti pengerjaan.
-                  </p>
-                </div>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', borderRadius: '8px' }}
-                >
-                  Login ▶
-                </button>
-              </div>
-
-              {/* Kartu 2: Login Dosen */}
-              <div 
-                className="card"
-                style={{ 
-                  padding: '30px 24px', 
-                  borderRadius: '12px', 
-                  textAlign: 'center', 
-                  border: '2px solid #E2E8F0',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s ease',
-                  backgroundColor: '#FFFFFF',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#1E3A8A';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(30, 58, 138, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
-                }}
-                onClick={() => handleSelectRole('Dosen')}
-              >
-                <div>
-                  <div style={{ width: '70px', height: '70px', backgroundColor: '#F0FDF4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 16px auto', border: '1px solid #BBF7D0' }}>
-                    👨‍🏫
-                  </div>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#14532D', marginBottom: '8px' }}>
-                    Login Dosen
-                  </h3>
-                  <p style={{ color: '#64748B', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '20px' }}>
-                    Kelola bank soal, konfigurasikan jadwal ujian & PIN, pantau log pelanggaran anti-curang, dan tetapkan sanksi nilai.
-                  </p>
-                </div>
-                <button 
-                  className="btn btn-success" 
-                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', borderRadius: '8px' }}
-                >
-                  Login ▶
-                </button>
-              </div>
-
+          {/* Right Form Panel */}
+          <div style={{ padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                Masuk ke Portal Ujian
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748B' }}>
+                Silakan pilih peran dan masukkan kredensial akun Anda.
+              </p>
             </div>
-          )}
 
-          {/* OPSI 2: FORM LOGIN TERPILIH (MAHASISWA ATAU DOSEN) */}
-          {selectedRole && (
-            <div className="card" style={{ padding: '30px 28px', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' }}>
-              
-              {/* Tombol Switcher Tab di atas Form */}
-              <div style={{ display: 'flex', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px', marginBottom: '22px' }}>
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    backgroundColor: selectedRole === 'Mahasiswa' ? '#FFFFFF' : 'transparent',
-                    color: selectedRole === 'Mahasiswa' ? '#1E3A8A' : '#64748B',
-                    boxShadow: selectedRole === 'Mahasiswa' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: '0.2s'
-                  }}
-                  onClick={() => handleSelectRole('Mahasiswa')}
-                >
-                  👨‍🎓 Login Mahasiswa
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    backgroundColor: selectedRole === 'Dosen' ? '#FFFFFF' : 'transparent',
-                    color: selectedRole === 'Dosen' ? '#14532D' : '#64748B',
-                    boxShadow: selectedRole === 'Dosen' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: '0.2s'
-                  }}
-                  onClick={() => handleSelectRole('Dosen')}
-                >
-                  👨‍🏫 Login Dosen
-                </button>
+            {/* Role Switcher */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px',
+              backgroundColor: '#F1F5F9',
+              padding: '5px',
+              borderRadius: '12px',
+              marginBottom: '24px'
+            }}>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('Mahasiswa')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  borderRadius: '9px',
+                  border: 'none',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  backgroundColor: selectedRole === 'Mahasiswa' ? '#FFFFFF' : 'transparent',
+                  color: selectedRole === 'Mahasiswa' ? '#1E3A8A' : '#64748B',
+                  boxShadow: selectedRole === 'Mahasiswa' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <GraduationCap size={18} />
+                <span>Mahasiswa</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRoleChange('Dosen')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  borderRadius: '9px',
+                  border: 'none',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  backgroundColor: selectedRole === 'Dosen' ? '#FFFFFF' : 'transparent',
+                  color: selectedRole === 'Dosen' ? '#047857' : '#64748B',
+                  boxShadow: selectedRole === 'Dosen' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <BookOpen size={18} />
+                <span>Dosen Pengampu</span>
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {errorMsg && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECDD3',
+                color: '#991B1B',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                fontSize: '0.83rem',
+                marginBottom: '18px',
+                lineHeight: 1.4
+              }}>
+                <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {/* Form Inputs */}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <User size={15} color="#64748B" />
+                  <span>{selectedRole === 'Mahasiswa' ? 'Nomor Induk Mahasiswa (NIM):' : 'Username / NIP Dosen:'}</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={selectedRole === 'Mahasiswa' ? 'Contoh: 105022410021' : 'Contoh: dosen'}
+                  required
+                />
               </div>
 
-              {/* Judul Form */}
-              <div style={{ marginBottom: '18px', textAlign: 'left' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: selectedRole === 'Mahasiswa' ? '#1E3A8A' : '#14532D', margin: 0 }}>
-                  {selectedRole === 'Mahasiswa' ? 'Portal Masuk Mahasiswa' : 'Portal Masuk Dosen Pengampu'}
-                </h3>
-                <p style={{ color: '#64748B', fontSize: '0.8rem', margin: '4px 0 0 0' }}>
-                  {selectedRole === 'Mahasiswa' 
-                    ? 'Masukkan Nomor Induk Mahasiswa (NIM) dan password Anda.' 
-                    : 'Masukkan username akun dosen dan password Anda.'}
-                </p>
-              </div>
-
-              {/* Alert Error Message */}
-              {errorMsg && (
-                <div style={{ backgroundColor: '#FEE2E2', color: '#991B1B', padding: '10px 14px', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'left', border: '1px solid #FCA5A5' }}>
-                  ⚠️ {errorMsg}
-                </div>
-              )}
-
-              {/* Form Input */}
-              <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
-                <div className="form-group">
-                  <label>{selectedRole === 'Mahasiswa' ? 'Nomor Induk Mahasiswa (NIM):' : 'Username Dosen / NIP:'}</label>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Lock size={15} color="#64748B" />
+                  <span>Kata Sandi (Password):</span>
+                </label>
+                <div style={{ position: 'relative' }}>
                   <input
-                    type="text"
-                    className="form-control"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder={selectedRole === 'Mahasiswa' ? 'Contoh: 105022410021' : 'Contoh: dosen'}
-                    autoFocus
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Password:</label>
-                  <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     className="form-control"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Masukkan Password"
+                    placeholder="Masukkan kata sandi"
+                    style={{ paddingRight: '42px' }}
+                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94A3B8',
+                      cursor: 'pointer',
+                      padding: '4px'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
+              </div>
 
-                <button 
-                  type="submit" 
-                  className={`btn ${selectedRole === 'Mahasiswa' ? 'btn-primary' : 'btn-success'}`} 
-                  style={{ width: '100%', padding: '12px', fontSize: '1rem', marginTop: '6px', borderRadius: '8px' }}
-                >
-                  Login
-                </button>
-              </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`btn ${selectedRole === 'Mahasiswa' ? 'btn-primary' : 'btn-success'}`}
+                style={{
+                  width: '100%',
+                  padding: '13px',
+                  fontSize: '0.98rem',
+                  borderRadius: '10px',
+                  marginTop: '8px'
+                }}
+              >
+                {loading ? (
+                  <span>Memverifikasi Akun...</span>
+                ) : (
+                  <>
+                    <span>Masuk ke Sistem</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </form>
 
-              {/* Quick Fill Demo */}
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)', fontSize: '0.8rem', textAlign: 'left' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>Akun Cepat untuk Uji Coba:</div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {selectedRole === 'Mahasiswa' ? (
-                    <>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setPreset('105022410021', '123')}>
-                        Juan Septhian (105022410021)
-                      </button>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setPreset('105022510107', '123')}>
-                        Jeniffer (105022510107)
-                      </button>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setPreset('terkunci', '123')}>
-                        🔒 Akun Terkunci (Demo)
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setPreset('dosen', 'dosen123')}>
-                      George Tangka (dosen / dosen123)
+            {/* Quick Demo Credentials */}
+            <div style={{ marginTop: '26px', paddingTop: '18px', borderTop: '1px solid #E2E8F0' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                ⚡ Akun Uji Coba Cepat (Presentasi Kuliah):
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {selectedRole === 'Mahasiswa' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPreset('105022410021', '123')}
+                      style={{ fontSize: '0.73rem', padding: '5px 9px', borderRadius: '6px', background: '#F1F5F9', border: '1px solid #CBD5E1', cursor: 'pointer', color: '#1E293B' }}
+                    >
+                      Juan Messi (105022410021)
                     </button>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreset('105022510107', '123')}
+                      style={{ fontSize: '0.73rem', padding: '5px 9px', borderRadius: '6px', background: '#F1F5F9', border: '1px solid #CBD5E1', cursor: 'pointer', color: '#1E293B' }}
+                    >
+                      Jeniffer Diana (105022510107)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreset('105022410095', '123')}
+                      style={{ fontSize: '0.73rem', padding: '5px 9px', borderRadius: '6px', background: '#F1F5F9', border: '1px solid #CBD5E1', cursor: 'pointer', color: '#1E293B' }}
+                    >
+                      Valentino (105022410095)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreset('terkunci', '123')}
+                      style={{ fontSize: '0.73rem', padding: '5px 9px', borderRadius: '6px', background: '#FEE2E2', border: '1px solid #FCA5A5', cursor: 'pointer', color: '#991B1B', fontWeight: 600 }}
+                      title="Uji coba Use Case 1.2.1.b (Akun Terkunci)"
+                    >
+                      🔒 Akun Terkunci (Demo)
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPreset('dosen', 'dosen123')}
+                    style={{ fontSize: '0.73rem', padding: '5px 10px', borderRadius: '6px', background: '#ECFDF5', border: '1px solid #A7F3D0', cursor: 'pointer', color: '#065F46', fontWeight: 600 }}
+                  >
+                    George Tangka (dosen / dosen123)
+                  </button>
+                )}
               </div>
-
-              {/* Kembali ke Pilihan Peran */}
-              <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
-                  onClick={() => setSelectedRole(null)}
-                >
-                  ◀ Kembali ke Menu Pilihan Peran
-                </button>
-              </div>
-
             </div>
-          )}
-
+          </div>
         </div>
       </main>
 
