@@ -154,11 +154,65 @@ export const saveDB = (db) => {
 // ================== SERVICE METHODS ==================
 
 // 1. Melakukan Login (Use Case 1.2.1)
-export const loginUser = (username, password) => {
+export const loginUser = (usernameInput, password) => {
   const db = getDB();
-  const user = db.pengguna.find(p => p.username === username);
+  const raw = usernameInput.toLowerCase().trim();
+  
+  // Deteksi jika input berupa email UNKLAB
+  let targetUsername = raw;
+  if (raw.includes('@')) {
+    if (raw.includes('george.tangka') || raw.includes('dosen')) {
+      targetUsername = 'dosen';
+    } else if (raw.includes('locked') || raw.includes('terkunci')) {
+      targetUsername = 'terkunci';
+    } else {
+      const digits = raw.replace(/\D/g, '');
+      if (digits) targetUsername = digits;
+    }
+  }
+
+  const user = db.pengguna.find(p => p.username.toLowerCase() === targetUsername || p.username.toLowerCase() === raw);
   if (!user || user.password !== password) {
-    return { success: false, message: 'Kredensial tidak valid: Username/NIM atau password salah.' };
+    return { success: false, message: 'Invalid login, please try again' };
+  }
+  if (user.status_akun !== 'Aktif') {
+    return { success: false, message: `Akses ditolak: Akun Anda sedang berstatus '${user.status_akun}'.` };
+  }
+
+  let profile = null;
+  if (user.role === 'Mahasiswa') {
+    profile = db.mahasiswa.find(m => m.id_pengguna === user.id_pengguna);
+  } else {
+    profile = db.dosen.find(d => d.id_pengguna === user.id_pengguna);
+  }
+
+  return {
+    success: true,
+    user: {
+      ...user,
+      profile
+    }
+  };
+};
+
+// Login via Akun UNKLAB Email (Google OAuth simulation)
+export const loginByEmail = (email) => {
+  const db = getDB();
+  const raw = email.toLowerCase().trim();
+  
+  let targetUsername = raw;
+  if (raw.includes('george.tangka') || raw.includes('dosen')) {
+    targetUsername = 'dosen';
+  } else if (raw.includes('locked') || raw.includes('terkunci')) {
+    targetUsername = 'terkunci';
+  } else {
+    const digits = raw.replace(/\D/g, '');
+    if (digits) targetUsername = digits;
+  }
+
+  const user = db.pengguna.find(p => p.username.toLowerCase() === targetUsername || p.username.toLowerCase() === raw);
+  if (!user) {
+    return { success: false, message: 'Akun Google UNKLAB tidak terdaftar dalam sistem xUnklab.' };
   }
   if (user.status_akun !== 'Aktif') {
     return { success: false, message: `Akses ditolak: Akun Anda sedang berstatus '${user.status_akun}'.` };
