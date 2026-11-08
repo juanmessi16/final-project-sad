@@ -293,7 +293,7 @@ const RuangUjian = ({ idSesi, onExamCompleted }) => {
             Ujian Berhasil Diserahkan!
           </h2>
           <p style={{ color: '#64748B', fontSize: '0.85rem', marginBottom: '24px' }}>
-            Lembar jawaban Anda telah diverifikasi dan tersimpan permanen di database sistem SiLab FIK UNKLAB.
+            Lembar jawaban Anda telah diverifikasi dan tersimpan permanen di database sistem xUnklab FIK UNKLAB.
           </p>
 
           {/* Receipt Slip */}

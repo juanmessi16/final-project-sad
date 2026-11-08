@@ -494,7 +494,7 @@ const PortalMahasiswa = ({ currentUser, onStartExam, onLogout }) => {
                 Fakultas Ilmu Komputer &bull; Universitas Klabat
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: '4px 0' }}>
-                TANDA TERIMA BUKTI PENGERJAAN UJIAN (SiLab)
+                TANDA TERIMA BUKTI PENGERJAAN UJIAN (xUnklab)
               </h3>
               <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
                 Sistem Evaluasi Berbasis Web dengan Pengawasan Anti-Curang Terpadu
@@ -557,7 +557,7 @@ const PortalMahasiswa = ({ currentUser, onStartExam, onLogout }) => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 16px 8px', fontSize: '0.72rem', color: '#64748B' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ShieldCheck size={16} color="#10B981" />
-                <span>Terverifikasi secara digital oleh SiLab Integrity Engine</span>
+                <span>Terverifikasi secara digital oleh xUnklab Integrity Engine</span>
               </div>
               <div>Kode Validasi: SHA256-OK</div>
             </div>
