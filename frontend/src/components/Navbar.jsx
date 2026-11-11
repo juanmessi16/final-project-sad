@@ -38,7 +38,7 @@ const Navbar = ({ currentUser, onLogout, inExam = false, examTitle = '' }) => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.01em', margin: 0, color: '#FFFFFF' }}>
-              SiLab Exam System
+              xUnklab
             </h1>
             <span style={{ 
               fontSize: '0.65rem', 
