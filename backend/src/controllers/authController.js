@@ -15,7 +15,7 @@ exports.login = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username/NIM dan password wajib diisi.'
+        message: 'Username/NIM/NIP dan password wajib diisi.'
       });
     }
 

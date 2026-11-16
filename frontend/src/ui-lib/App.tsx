@@ -371,10 +371,10 @@ function LoginModal({
 
       <form className="login-form" onSubmit={submit}>
         <label>
-          Username / NIM
+          {role === "student" ? "Username / NIM" : "Username / NIP"}
           <input
             autoFocus
-            placeholder={role === "student" ? "Contoh: 105022110001" : "Contoh: dosen"}
+            placeholder={role === "student" ? "Contoh: 105022110001" : "Contoh: dosen atau NIP"}
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -409,10 +409,10 @@ function LoginModal({
 function formatStudentName(user: any): { fullName: string; shortName: string; nim: string; initials: string } {
   if (!user) {
     return {
-      fullName: "Jonathan Mambu",
-      shortName: "Jonathan",
-      nim: "105022410001",
-      initials: "JM"
+      fullName: "Juan Tulengkey",
+      shortName: "Juan",
+      nim: "105022410021",
+      initials: "JT"
     };
   }
 
