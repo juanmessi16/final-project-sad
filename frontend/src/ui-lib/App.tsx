@@ -294,14 +294,52 @@ function LoginModal({
 }: {
   role: Role;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (user: any) => void;
 }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const submit = (event: FormEvent) => {
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
+    setErrorMsg("");
     setLoading(true);
-    window.setTimeout(onSuccess, 450);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.message || "Username atau password salah. Silakan coba lagi.");
+        setLoading(false);
+        return;
+      }
+
+      // Simpan token JWT dan info user
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+      sessionStorage.setItem("currentUser", JSON.stringify(data.user));
+
+      setLoading(false);
+      onSuccess(data.user);
+    } catch (err) {
+      console.error("Gagal menghubungi server backend:", err);
+      setErrorMsg("Tidak dapat menghubungi server backend (port 5000). Pastikan backend Anda sudah aktif ('npm start' atau 'npm run dev').");
+      setLoading(false);
+    }
   };
 
   return (
@@ -312,23 +350,46 @@ function LoginModal({
       <p className="modal-kicker">{role === "student" ? "PORTAL MAHASISWA" : "PORTAL DOSEN"}</p>
       <h2 id="login-title">Selamat datang kembali</h2>
       <p className="modal-subtitle">Masukkan akun universitas Anda untuk melanjutkan.</p>
+
+      {errorMsg && (
+        <div
+          style={{
+            backgroundColor: "#fef2f2",
+            border: "1px solid #f87171",
+            color: "#b91c1c",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            fontSize: "13px",
+            lineHeight: "1.4",
+            marginBottom: "16px",
+          }}
+        >
+          <strong>Gagal Masuk: </strong>
+          {errorMsg}
+        </div>
+      )}
+
       <form className="login-form" onSubmit={submit}>
         <label>
           Username / NIM
           <input
             autoFocus
-            placeholder={role === "student" ? "Contoh: 105022410001" : "Username dosen"}
+            placeholder={role === "student" ? "Contoh: 105022110001" : "Contoh: dosen"}
             required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
         </label>
         <label>
           Password
           <span className="password-field">
             <input
-              minLength={4}
+              minLength={3}
               placeholder="Masukkan password"
               required
               type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
             <button type="button" onClick={() => setShowPassword(!showPassword)}>
               {showPassword ? "Sembunyikan" : "Lihat"}
@@ -336,7 +397,7 @@ function LoginModal({
           </span>
         </label>
         <button className="button primary wide" disabled={loading} type="submit">
-          {loading ? "Memverifikasi..." : "Masuk"}
+          {loading ? "Memverifikasi ke Database..." : "Masuk"}
           {!loading && <Icon name="arrow" size={18} />}
         </button>
       </form>
@@ -345,13 +406,84 @@ function LoginModal({
   );
 }
 
+function formatStudentName(user: any): { fullName: string; shortName: string; nim: string; initials: string } {
+  if (!user) {
+    return {
+      fullName: "Jonathan Mambu",
+      shortName: "Jonathan",
+      nim: "105022410001",
+      initials: "JM"
+    };
+  }
+
+  const rawName = user.nama || user.detail?.nama || user.username || "Mahasiswa";
+  const nim = user.detail?.nim || user.username || "105022410001";
+
+  let fullName = rawName;
+  let shortName = rawName;
+
+  // Jika format dari DB "Tulengkey, Juan Messi Septhian"
+  if (rawName.includes(",")) {
+    const [belakang, depan] = rawName.split(",").map((s: string) => s.trim());
+    fullName = depan ? `${depan} ${belakang}` : rawName;
+    shortName = depan ? depan.split(" ")[0] : belakang;
+  } else {
+    shortName = rawName.split(" ")[0];
+  }
+
+  // Inisial avatar (2 huruf)
+  let initials = "M";
+  const words = fullName.split(" ").filter(Boolean);
+  if (words.length >= 2) {
+    initials = (words[0][0] + words[1][0]).toUpperCase();
+  } else if (words.length === 1 && words[0].length >= 2) {
+    initials = words[0].slice(0, 2).toUpperCase();
+  }
+
+  return { fullName, shortName, nim, initials };
+}
+
+function formatLecturerName(user: any): { fullName: string; shortName: string; course: string; initials: string } {
+  if (!user) {
+    return {
+      fullName: "George M. W. Tangka, S.Kom., MBA",
+      shortName: "George",
+      course: "Sistem Analisis & Desain",
+      initials: "GT"
+    };
+  }
+
+  const fullName = user.nama || user.detail?.nama_dosen || "George M. W. Tangka, S.Kom., MBA";
+  const course = user.detail?.mata_kuliah || "Sistem Analisis & Desain";
+
+  let shortName = "George";
+  if (fullName.includes("George")) {
+    shortName = "George";
+  } else {
+    shortName = fullName.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, "").split(" ")[0];
+  }
+
+  let initials = "GT";
+  const words = fullName.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, "").split(" ").filter(Boolean);
+  if (words.length >= 2) {
+    initials = (words[0][0] + words[1][0]).toUpperCase();
+  } else if (words.length === 1) {
+    initials = words[0].slice(0, 2).toUpperCase();
+  }
+
+  return { fullName, shortName, course, initials };
+}
+
 function StudentDashboard({
+  currentUser,
   onLogout,
   onStartExam,
 }: {
+  currentUser?: any;
   onLogout: () => void;
   onStartExam: () => void;
 }) {
+  const student = formatStudentName(currentUser);
   const [pinExam, setPinExam] = useState<(typeof exams)[number] | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
@@ -377,10 +509,10 @@ function StudentDashboard({
             <span className="notification-dot" />
           </button>
           <span className="topbar-divider" />
-          <div className="avatar">JM</div>
+          <div className="avatar">{student.initials}</div>
           <div className="profile-text">
-            <strong>Jonathan Mambu</strong>
-            <span>105022410001</span>
+            <strong>{student.fullName}</strong>
+            <span>{student.nim}</span>
           </div>
           <button className="logout-button" onClick={onLogout}>
             <Icon name="logout" size={17} /> <span>Keluar</span>
@@ -391,7 +523,7 @@ function StudentDashboard({
         <section className="welcome-row">
           <div>
             <p className="section-kicker">SENIN, 16 JUNI 2025</p>
-            <h1>Selamat pagi, Jonathan.</h1>
+            <h1>Selamat pagi, {student.shortName}.</h1>
             <p>Berikut jadwal ujian yang telah disiapkan untukmu.</p>
           </div>
           <div className="date-card">
@@ -564,9 +696,11 @@ function LecturerModule({ active }: { active: string }) {
     ["Jelaskan konsep RESTful API.", "Esai", "20 poin"],
   ]);
   const [participants, setParticipants] = useState([
-    ["105022410001", "Jonathan Mambu", "Kelas A", "Terdaftar"],
-    ["105022410018", "Chelsea Runtuwene", "Kelas A", "Sedang ujian"],
-    ["105022410027", "Kevin Tumbel", "Kelas A", "Terdaftar"],
+    ["105022410021", "Tulengkey, Juan Messi Septhian", "Kelas A", "Terdaftar"],
+    ["105022510107", "Tuwaidan, Jeniffer Diana", "Kelas A", "Sedang ujian"],
+    ["105022410095", "Sumual, Valentino", "Kelas A", "Terdaftar"],
+    ["105022410007", "Sahetapy, Wilman Valentino", "Kelas A", "Terdaftar"],
+    ["105022510475", "Laluyan, Matthew Arnold M", "Kelas A", "Terdaftar"],
   ]);
   const [decisions, setDecisions] = useState<Record<number, string>>({});
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -808,7 +942,14 @@ function LecturerModule({ active }: { active: string }) {
   );
 }
 
-function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
+function LecturerDashboard({
+  currentUser,
+  onLogout,
+}: {
+  currentUser?: any;
+  onLogout: () => void;
+}) {
+  const lecturer = formatLecturerName(currentUser);
   const [activeNav, setActiveNav] = useState("Dashboard");
   return (
     <div className="lecturer-layout">
@@ -837,10 +978,10 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div className="sidebar-profile">
-          <div className="avatar lecturer-avatar">JL</div>
+          <div className="avatar lecturer-avatar">{lecturer.initials}</div>
           <div>
-            <strong>Dr. Johan Lengkong</strong>
-            <span>Dosen Informatika</span>
+            <strong>{lecturer.fullName}</strong>
+            <span>{lecturer.course}</span>
           </div>
           <button aria-label="Keluar" onClick={onLogout}>
             <Icon name="logout" size={18} />
@@ -857,7 +998,7 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
         <div className="lecturer-top">
           <div>
             <p className="section-kicker">RINGKASAN AKADEMIK</p>
-            <h1>{activeNav === "Dashboard" ? "Selamat pagi, Dr. Johan." : activeNav}</h1>
+            <h1>{activeNav === "Dashboard" ? `Selamat pagi, ${lecturer.shortName}.` : activeNav}</h1>
             <p>
               {activeNav === "Dashboard"
                 ? "Pantau dan kelola seluruh aktivitas ujian dari satu tempat."
@@ -1006,7 +1147,14 @@ function LecturerDashboard({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-function ExamPage({ onExit }: { onExit: () => void }) {
+function ExamPage({
+  currentUser,
+  onExit,
+}: {
+  currentUser?: any;
+  onExit: () => void;
+}) {
+  const student = formatStudentName(currentUser);
   const [started, setStarted] = useState(false);
   const [question, setQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -1104,14 +1252,14 @@ function ExamPage({ onExit }: { onExit: () => void }) {
           <h1>Pastikan identitas dan perangkatmu siap.</h1>
           <p>Ujian akan berjalan dalam mode layar penuh dan aktivitas browser akan dicatat.</p>
           <div className="identity-card">
-            <div className="avatar">JM</div>
+            <div className="avatar">{student.initials}</div>
             <div>
               <span>Nama peserta</span>
-              <strong>Jonathan Mambu</strong>
+              <strong>{student.fullName}</strong>
             </div>
             <div>
               <span>NIM</span>
-              <strong>105022410001</strong>
+              <strong>{student.nim}</strong>
             </div>
             <div>
               <span>Kelas</span>
@@ -1200,11 +1348,11 @@ function ExamPage({ onExit }: { onExit: () => void }) {
           <div className="receipt">
             <div>
               <span>Nama</span>
-              <strong>Jonathan Mambu</strong>
+              <strong>{student.fullName}</strong>
             </div>
             <div>
               <span>NIM</span>
-              <strong>105022410001</strong>
+              <strong>{student.nim}</strong>
             </div>
             <div>
               <span>Ujian</span>
@@ -1375,24 +1523,78 @@ function ExamPage({ onExit }: { onExit: () => void }) {
   );
 }
 
-export default function App() {
-  const [view, setView] = useState<View>("landing");
+export default function App({
+  onLoginSuccess,
+  onLogout,
+  onStartExam,
+}: {
+  onLoginSuccess?: (user: any) => void;
+  onLogout?: () => void;
+  onStartExam?: (sessionId: any) => void;
+} = {}) {
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem("currentUser");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [view, setView] = useState<View>(() => {
+    try {
+      const saved = sessionStorage.getItem("currentUser");
+      if (saved) {
+        const u = JSON.parse(saved);
+        return u.role?.toLowerCase() === "dosen" ? "lecturer" : "student";
+      }
+    } catch {}
+    return "landing";
+  });
+
   const [loginRole, setLoginRole] = useState<Role | null>(null);
 
-  const loginSuccess = () => {
-    setView(loginRole === "student" ? "student" : "lecturer");
+  const loginSuccess = (user?: any) => {
+    if (user) {
+      setCurrentUser(user);
+      sessionStorage.setItem("currentUser", JSON.stringify(user));
+      if (onLoginSuccess) {
+        onLoginSuccess(user);
+      }
+    }
+    // Jika backend mengembalikan role Pengguna, sesuaikan view
+    if (user && user.role) {
+      const isLecturer = user.role.toLowerCase() === "dosen";
+      setView(isLecturer ? "lecturer" : "student");
+    } else {
+      setView(loginRole === "student" ? "student" : "lecturer");
+    }
     setLoginRole(null);
   };
-  const logout = () => setView("landing");
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("currentUser");
+    setCurrentUser(null);
+    if (onLogout) onLogout();
+    setView("landing");
+  };
 
   return (
     <>
       {view === "landing" && <Landing onLogin={setLoginRole} />}
       {view === "student" && (
-        <StudentDashboard onLogout={logout} onStartExam={() => setView("exam")} />
+        <StudentDashboard
+          currentUser={currentUser}
+          onLogout={logout}
+          onStartExam={() => {
+            if (onStartExam) onStartExam(1);
+            setView("exam");
+          }}
+        />
       )}
-      {view === "lecturer" && <LecturerDashboard onLogout={logout} />}
-      {view === "exam" && <ExamPage onExit={() => setView("student")} />}
+      {view === "lecturer" && <LecturerDashboard currentUser={currentUser} onLogout={logout} />}
+      {view === "exam" && <ExamPage currentUser={currentUser} onExit={() => setView("student")} />}
       {loginRole && (
         <LoginModal onClose={() => setLoginRole(null)} onSuccess={loginSuccess} role={loginRole} />
       )}
