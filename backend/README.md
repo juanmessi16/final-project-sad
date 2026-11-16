@@ -98,12 +98,12 @@ mysql -u root -p < database/seed.sql
 | Peran | Username / NIM | Password | Nama Lengkap |
 |---|---|---|---|
 | **Dosen** | `dosen` | `dosen123` | George M. W. Tangka, S.Kom., MBA |
-| **Mahasiswa** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian |
-| **Mahasiswa** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana |
-| **Mahasiswa** | `105022410095` | `123` | Sumual, Valentino |
-| **Mahasiswa** | `105022410007` | `123` | Sahetapy, Wilman Valentino |
-| **Mahasiswa** | `105022510475` | `123` | Laluyan, Matthew Arnold M |
-| **Akun Terkunci** | `terkunci` | `123` | Mahasiswa Terkunci (Demo Penolakan Login) |
+| **Mahasiswa** | `105022410021` | `mhs123` | Tulengkey, Juan Messi Septhian |
+| **Mahasiswa** | `105022510107` | `mhs123` | Tuwaidan, Jeniffer Diana |
+| **Mahasiswa** | `105022410095` | `mhs123` | Sumual, Valentino |
+| **Mahasiswa** | `105022410007` | `mhs123` | Sahetapy, Wilman Valentino |
+| **Mahasiswa** | `105022510475` | `mhs123` | Laluyan, Matthew Arnold M |
+| **Akun Terkunci** | `terkunci` | `mhs123` | Mahasiswa Terkunci (Demo Penolakan Login) |
 
 > **PIN Ujian Default:** `SAD2026` untuk ujian *UTS Sistem Analisis & Desain (SAD)*.
 

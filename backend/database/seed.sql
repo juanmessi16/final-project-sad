@@ -28,7 +28,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Hash: $2a$10$C3ylDqR1FV8Nqyu7GSoSxuMGTfG.iOnNe1jrdiQgBh6E0BsB5NqDe
 -- -----------------------------------------------------------------------------
 INSERT INTO `pengguna` (`id_pengguna`, `username`, `password`, `role`, `status_akun`) VALUES
-('USR_DOS_01', 'dosen', '$2a$10$C3ylDqR1FV8Nqyu7GSoSxuMGTfG.iOnNe1jrdiQgBh6E0BsB5NqDe', 'Dosen', 'Aktif');
+('USR_DOS_01', 'dosen', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.MyqBkLjnUvGPbDfuXVP.AQUwlw6vJtO', 'Dosen', 'Aktif');
 
 INSERT INTO `dosen` (`id_dosen`, `id_pengguna`, `nama_dosen`, `mata_kuliah`) VALUES
 ('DOS_01', 'USR_DOS_01', 'George M. W. Tangka, S.Kom., MBA', 'Sistem Analisis & Desain');
@@ -36,15 +36,15 @@ INSERT INTO `dosen` (`id_dosen`, `id_pengguna`, `nama_dosen`, `mata_kuliah`) VAL
 -- -----------------------------------------------------------------------------
 -- 2. Pengguna & Mahasiswa
 -- Password default mahasiswa: '123'
--- Hash: $2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi
+-- Hash: $2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK
 -- -----------------------------------------------------------------------------
 INSERT INTO `pengguna` (`id_pengguna`, `username`, `password`, `role`, `status_akun`) VALUES
-('USR_MHS_01', '105022410021', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Aktif'),
-('USR_MHS_02', '105022510107', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Aktif'),
-('USR_MHS_03', '105022410095', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Aktif'),
-('USR_MHS_04', '105022410007', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Aktif'),
-('USR_MHS_05', '105022510475', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Aktif'),
-('USR_MHS_LOCK', 'terkunci', '$2a$10$B26B56h.5EMXsfYpHhQEVOPBJcaA8nq3WojHUcnluCNrN4XlMtUoi', 'Mahasiswa', 'Terkunci');
+('USR_MHS_01', '105022410021', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Aktif'),
+('USR_MHS_02', '105022510107', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Aktif'),
+('USR_MHS_03', '105022410095', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Aktif'),
+('USR_MHS_04', '105022410007', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Aktif'),
+('USR_MHS_05', '105022510475', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Aktif'),
+('USR_MHS_LOCK', 'terkunci', '$2a$10$MpK4ViF5/wGRI7O6hkVlV.d2wJ0Giwf2QzCyXNefwF4EBs3fBIKcK', 'Mahasiswa', 'Terkunci');
 
 INSERT INTO `mahasiswa` (`id_mahasiswa`, `id_pengguna`, `nim`, `nama`) VALUES
 ('MHS_01', 'USR_MHS_01', '105022410021', 'Tulengkey, Juan Messi Septhian'),

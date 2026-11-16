@@ -139,15 +139,15 @@ Buka browser pada alamat yang ditampilkan: `http://localhost:5173`.
 
 | Aktor | Username / NIM | Password | Keterangan |
 |---|---|---|---|
-| **Dosen** | `dosen` | `dosen123` | George M. W. Tangka, S.Kom., MBA |
-| **Mahasiswa 1** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian |
-| **Mahasiswa 2** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana |
-| **Mahasiswa 3** | `105022410095` | `123` | Sumual, Valentino |
-| **Mahasiswa 4** | `105022410007` | `123` | Sahetapy, Wilman Valentino |
-| **Mahasiswa 5** | `105022510475` | `123` | Laluyan, Matthew Arnold M |
-| **Akun Terkunci** | `terkunci` | `123` | Akun demo status 'Terkunci' (Skenario penolakan login) |
+| **Dosen** | `dosen` | `dosen123` | George M. W. Tangka, S.Kom., MBA (Dosen SAD) |
+| **Mahasiswa 1** | `105022410021` | `mhs123` | Tulengkey, Juan Messi Septhian |
+| **Mahasiswa 2** | `105022510107` | `mhs123` | Tuwaidan, Jeniffer Diana |
+| **Mahasiswa 3** | `105022410095` | `mhs123` | Sumual, Valentino |
+| **Mahasiswa 4** | `105022410007` | `mhs123` | Sahetapy, Wilman Valentino |
+| **Mahasiswa 5** | `105022510475` | `mhs123` | Laluyan, Matthew Arnold M |
+| **Akun Terkunci** | `terkunci` | `mhs123` | Akun demo status 'Terkunci' (Skenario penolakan login) |
 
-> **PIN Ujian Default:** `SAD2026`
+> **PIN Ujian Default:** `SAD2026` untuk ujian *UTS Sistem Analisis & Desain (SAD)*.
 
 ---
 
