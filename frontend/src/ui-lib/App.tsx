@@ -1672,6 +1672,8 @@ function LecturerModule({ active }: { active: string }) {
 
   // State Log Pelanggaran & Sanksi (TC-35, TC-36, TC-52)
   const [sanctionMsg, setSanctionMsg] = useState("");
+  const [violationExamFilter, setViolationExamFilter] = useState<string>("ALL");
+  const [violationDecisionFilter, setViolationDecisionFilter] = useState<string>("Semua Status");
 
   useEffect(() => {
     const found = (dbState.exams || []).find((e: ExamItem) => e.id_ujian === selectedExamId);
@@ -3979,26 +3981,98 @@ function LecturerModule({ active }: { active: string }) {
   // Menu Tinjau Log Pelanggaran (TC-19, TC-35, TC-36, TC-52)
   const logs: ViolationLogItem[] = dbState.violationLogs || [];
 
-  const handleDecisionChange = async (idLog: string, decision: "Peringatan" | "Pengurangan Nilai" | "Diskualifikasi") => {
-    await applySanctionDecisionApi(idLog, decision, 15);
+  const filteredLogs = logs.filter((item) => {
+    const itemExamId = item.id_ujian || "UJN_01";
+    const matchExam = violationExamFilter === "ALL" || itemExamId === violationExamFilter;
+    const currentDecision =
+      item.status_keputusan && item.status_keputusan !== "Tidak Ada"
+        ? item.status_keputusan
+        : "Belum Ditetapkan";
+    const matchDecision =
+      violationDecisionFilter === "Semua Status" || currentDecision === violationDecisionFilter;
+    return matchExam && matchDecision;
+  });
+
+  const handleDecisionChange = async (
+    idLog: string,
+    decision: "Peringatan" | "Pengurangan Nilai" | "Diskualifikasi"
+  ) => {
+    await applySanctionDecisionApi(idLog, decision, 20);
     setDbState(loadLocalDB());
     setSanctionMsg(
-      `Keputusan "${decision}" berhasil disimpan ke database untuk log ${idLog} (TC-36).`
+      `Keputusan "${decision}" berhasil disimpan ke database untuk log ${idLog} dan tersinkronisasi dengan Nilai Ujian (TC-36).`
     );
     setTimeout(() => setSanctionMsg(""), 4000);
   };
 
   return (
     <section className="management-panel violation-panel">
-      <div className="management-toolbar">
-        <div>
+      <div className="management-toolbar" style={{ flexWrap: "wrap", gap: "14px", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: "260px" }}>
           <p className="section-kicker">LOG TIDAK DAPAT DIUBAH (APPEND-ONLY / IMMUTABLE - TC-52)</p>
           <h2>Tinjau Log Pelanggaran</h2>
-          <p>Seluruh catatan pelanggaran dilindungi dari modifikasi/penghapusan. Keputusan akhir ditetapkan oleh dosen (TC-35 &amp; TC-36).</p>
+          <p>
+            Seluruh catatan pelanggaran dilindungi dari modifikasi/penghapusan. Keputusan akhir ditetapkan oleh dosen (TC-35 &amp; TC-36).
+          </p>
         </div>
-        <span className="review-count">
-          <Icon name="warning" size={16} /> {logs.length} tercatat
-        </span>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          {/* Dropdown Pemilih Ujian (Konsisten dengan Nilai Ujian & Bank Soal) */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label htmlFor="exam-violation-select" style={{ fontSize: "12px", fontWeight: 600, color: "#64748b" }}>
+              Pilih Ujian:
+            </label>
+            <select
+              id="exam-violation-select"
+              value={violationExamFilter}
+              onChange={(e) => setViolationExamFilter(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#1e293b",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              <option value="ALL">Semua Ujian</option>
+              {(dbState.exams || []).map((exam: ExamItem) => (
+                <option key={exam.id_ujian} value={exam.id_ujian}>
+                  {exam.kode_mk || "IF-301"} • {exam.nama_ujian}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Cepat Status Keputusan */}
+          <select
+            aria-label="Filter Status Keputusan"
+            value={violationDecisionFilter}
+            onChange={(e) => setViolationDecisionFilter(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#1e293b",
+              background: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            <option value="Semua Status">Semua Status</option>
+            <option value="Belum Ditetapkan">Belum Ditetapkan</option>
+            <option value="Peringatan">Peringatan</option>
+            <option value="Pengurangan Nilai">Pengurangan Nilai</option>
+            <option value="Diskualifikasi">Diskualifikasi</option>
+          </select>
+
+          <span className="review-count">
+            <Icon name="warning" size={16} /> {filteredLogs.length} tercatat
+          </span>
+        </div>
       </div>
 
       {sanctionMsg && (
@@ -4017,43 +4091,73 @@ function LecturerModule({ active }: { active: string }) {
         </div>
       )}
 
-      {logs.map((item) => (
-        <article className="violation-row" key={item.id_log}>
-          <span className="warning-symbol">
-            <Icon name="warning" size={18} />
-          </span>
-          <div>
-            <strong>{item.nama_mahasiswa}</strong>
-            <span>{item.nim}</span>
-          </div>
-          <div>
-            <strong>{item.jenis_pelanggaran}</strong>
-            <span>
-              {item.waktu_kejadian} · Peringatan {item.jumlah_pelanggaran}/3 · Status: {item.status_ujian}
-              {item.status_keputusan && item.status_keputusan !== "Tidak Ada"
-                ? ` · Sanksi: ${item.status_keputusan}`
-                : ""}
-            </span>
-          </div>
-          <select
-            aria-label={`Keputusan untuk ${item.nama_mahasiswa}`}
-            onChange={(event) =>
-              handleDecisionChange(
-                item.id_log,
-                event.target.value as "Peringatan" | "Pengurangan Nilai" | "Diskualifikasi"
-              )
-            }
-            value={item.status_keputusan && item.status_keputusan !== "Tidak Ada" ? item.status_keputusan : ""}
-          >
-            <option value="" disabled>
-              Tetapkan keputusan
-            </option>
-            <option value="Peringatan">Peringatan</option>
-            <option value="Pengurangan Nilai">Pengurangan Nilai</option>
-            <option value="Diskualifikasi">Diskualifikasi</option>
-          </select>
-        </article>
-      ))}
+      {filteredLogs.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px 20px",
+            background: "#f8fafc",
+            border: "1px dashed #cbd5e1",
+            borderRadius: "12px",
+            color: "#64748b",
+            marginTop: "8px",
+          }}
+        >
+          <Icon name="shield" size={32} />
+          <h3 style={{ margin: "12px 0 6px", color: "#334155" }}>Belum Ada Catatan Pelanggaran</h3>
+          <p style={{ margin: 0, fontSize: "13px" }}>
+            Belum ada catatan pelanggaran pada ujian ini. Seluruh peserta mengerjakan ujian dengan tertib.
+          </p>
+        </div>
+      ) : (
+        filteredLogs.map((item) => {
+          const matchedExam = (dbState.exams || []).find(
+            (e: ExamItem) => e.id_ujian === (item.id_ujian || "UJN_01")
+          );
+          const examLabel = matchedExam
+            ? `${matchedExam.kode_mk || "IF-241"} ${matchedExam.nama_ujian}`
+            : item.nama_ujian || "UTS Sistem Analisis & Desain";
+
+          return (
+            <article className="violation-row" key={item.id_log}>
+              <span className="warning-symbol">
+                <Icon name="warning" size={18} />
+              </span>
+              <div>
+                <strong>{item.nama_mahasiswa}</strong>
+                <span>{item.nim}</span>
+              </div>
+              <div>
+                <strong>{item.jenis_pelanggaran}</strong>
+                <span>
+                  {item.waktu_kejadian} · {examLabel} · Peringatan {item.jumlah_pelanggaran}/3 · Status:{" "}
+                  {item.status_ujian}
+                  {item.status_keputusan && item.status_keputusan !== "Tidak Ada"
+                    ? ` · Sanksi: ${item.status_keputusan}`
+                    : ""}
+                </span>
+              </div>
+              <select
+                aria-label={`Keputusan untuk ${item.nama_mahasiswa}`}
+                onChange={(event) =>
+                  handleDecisionChange(
+                    item.id_log,
+                    event.target.value as "Peringatan" | "Pengurangan Nilai" | "Diskualifikasi"
+                  )
+                }
+                value={item.status_keputusan && item.status_keputusan !== "Tidak Ada" ? item.status_keputusan : ""}
+              >
+                <option value="" disabled>
+                  Tetapkan keputusan
+                </option>
+                <option value="Peringatan">Peringatan</option>
+                <option value="Pengurangan Nilai">Pengurangan Nilai</option>
+                <option value="Diskualifikasi">Diskualifikasi</option>
+              </select>
+            </article>
+          );
+        })
+      )}
     </section>
   );
 }
