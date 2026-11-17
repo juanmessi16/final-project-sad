@@ -1618,15 +1618,19 @@ export async function togglePublishExamResultApi(idUjian: string, publish: boole
 export async function applySanctionDecisionApi(
   idLogOrSesi: string,
   decision: "Peringatan" | "Pengurangan Nilai" | "Diskualifikasi",
-  penaltyPoints = 15
+  penaltyPoints = 20
 ) {
   const db = loadLocalDB();
   let targetSesiId = idLogOrSesi;
+  let targetNim = "";
+  let targetExamId = "";
 
   db.violationLogs.forEach((log: ViolationLogItem) => {
     if (log.id_log === idLogOrSesi || log.id_sesi === idLogOrSesi) {
       log.status_keputusan = decision;
       targetSesiId = log.id_sesi;
+      targetNim = log.nim;
+      targetExamId = log.id_ujian || "UJN_01";
       if (decision === "Diskualifikasi") {
         log.total_nilai = 0;
         log.status_ujian = "Dikunci Paksa";
@@ -1638,16 +1642,28 @@ export async function applySanctionDecisionApi(
   });
 
   db.sessions.forEach((s: any) => {
-    if (s.id_sesi === targetSesiId) {
+    const isSameSession = s.id_sesi === targetSesiId;
+    const isSameStudentExam = targetNim && targetExamId && s.nim === targetNim && (s.id_ujian || "UJN_01") === targetExamId;
+    if (isSameSession || isSameStudentExam) {
       s.status_keputusan = decision;
       if (decision === "Diskualifikasi") {
         s.total_nilai = 0;
         s.numeric_score = 0;
-        s.status_ujian = "Dikunci Paksa";
+        s.status_ujian = "Diskualifikasi";
       } else if (decision === "Pengurangan Nilai") {
-        const current = s.total_nilai ?? s.numeric_score ?? 80;
-        s.total_nilai = Math.max(0, current - penaltyPoints);
-        s.numeric_score = s.total_nilai;
+        const baseScore =
+          s.objective_earned !== undefined && s.essay_earned !== undefined && !s.has_ungraded_essay
+            ? Number(s.objective_earned) + Number(s.essay_earned)
+            : (s.total_nilai ?? s.numeric_score ?? 80);
+        if (!s.has_ungraded_essay) {
+          s.total_nilai = Math.max(0, baseScore - penaltyPoints);
+          s.numeric_score = s.total_nilai;
+        }
+      } else if (decision === "Peringatan") {
+        if (!s.has_ungraded_essay && s.objective_earned !== undefined && s.essay_earned !== undefined) {
+          s.total_nilai = Number(s.objective_earned) + Number(s.essay_earned);
+          s.numeric_score = s.total_nilai;
+        }
       }
     }
   });
