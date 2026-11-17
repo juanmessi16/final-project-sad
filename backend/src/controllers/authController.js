@@ -1,6 +1,6 @@
 /**
  * src/controllers/authController.js
- * Controller autentikasi pengguna (FR-01, BR-01, NFR-04, NFR-06).
+ * Controller autentikasi pengguna (TC-01 s.d. TC-05, TC-47, TC-49).
  */
 
 const bcrypt = require('bcryptjs');
@@ -10,7 +10,7 @@ const { pool } = require('../config/db');
 
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, expected_role, device_id } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -19,54 +19,75 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Cari pengguna
+    const identifier = username.trim();
+
+    // Cari pengguna berdasarkan username, NIM mahasiswa, atau NIP dosen
     const [users] = await pool.query(
-      `SELECT id_pengguna, username, password, role, status_akun 
-       FROM pengguna 
-       WHERE username = ?`,
-      [username.trim()]
+      `SELECT DISTINCT p.id_pengguna, p.username, p.password, p.role, p.status_akun, p.active_session_id
+       FROM pengguna p
+       LEFT JOIN mahasiswa m ON p.id_pengguna = m.id_pengguna
+       LEFT JOIN dosen d ON p.id_pengguna = d.id_pengguna
+       WHERE p.username = ? OR m.nim = ? OR d.nip = ?
+       LIMIT 1`,
+      [identifier, identifier, identifier]
     );
 
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Username atau password tidak cocok.'
+        message: 'Akun tidak ditemukan. Periksa kembali Username/NIM/NIP Anda.'
       });
     }
 
     const user = users[0];
 
-    // Cek password hash
+    // TC-04: Cek status akun Terkunci atau Nonaktif terlebih dahulu
+    if (user.status_akun === 'Nonaktif' || user.status_akun === 'Terkunci') {
+      return res.status(403).json({
+        success: false,
+        status_akun: user.status_akun,
+        message: `Akun Anda berstatus '${user.status_akun}' dan tidak dapat masuk ke sistem. Silakan hubungi Dosen atau Administrator.`
+      });
+    }
+
+    // TC-03 & TC-47: Verifikasi password terhadap hash bcrypt di database
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Username atau password tidak cocok.'
+        message: 'Password yang Anda masukkan salah. Silakan coba lagi.'
       });
     }
 
-    // Cek status akun
-    if (user.status_akun === 'Nonaktif' || user.status_akun === 'Terkunci') {
-      return res.status(403).json({
-        success: false,
-        message: `Akun Anda berstatus '${user.status_akun}'. Silakan hubungi Dosen atau Administrator.`
-      });
+    // Validasi kesesuaian portal login jika expected_role dikirimkan
+    if (expected_role) {
+      const normalizedExpected = expected_role.toLowerCase();
+      const normalizedActual = user.role.toLowerCase();
+      if (
+        (normalizedExpected === 'student' || normalizedExpected === 'mahasiswa') &&
+        normalizedActual !== 'mahasiswa'
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akun Dosen tidak dapat masuk melalui Portal Mahasiswa. Silakan gunakan Portal Dosen.'
+        });
+      }
+      if (
+        (normalizedExpected === 'lecturer' || normalizedExpected === 'dosen') &&
+        normalizedActual !== 'dosen'
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akun Mahasiswa tidak memiliki hak akses ke Portal Dosen (403 Forbidden).'
+        });
+      }
     }
-
-    // Generate unique session id untuk single-session enforcement (BR-01)
-    const sessionId = crypto.randomUUID();
-
-    // Perbarui active_session_id di database
-    await pool.query(
-      'UPDATE pengguna SET active_session_id = ? WHERE id_pengguna = ?',
-      [sessionId, user.id_pengguna]
-    );
 
     // Ambil data profil dosen atau mahasiswa
     let profile = null;
     if (user.role === 'Dosen') {
       const [dosenRows] = await pool.query(
-        'SELECT id_dosen, nama_dosen, mata_kuliah FROM dosen WHERE id_pengguna = ?',
+        'SELECT id_dosen, nip, nama_dosen, mata_kuliah FROM dosen WHERE id_pengguna = ?',
         [user.id_pengguna]
       );
       profile = dosenRows[0] || null;
@@ -78,7 +99,16 @@ exports.login = async (req, res) => {
       profile = mhsRows[0] || null;
     }
 
-    // Generate JWT token berlaku 3 jam (NFR-06)
+    // Generate unique session id untuk single-session enforcement (TC-05)
+    const sessionId = device_id ? String(device_id).trim() : crypto.randomUUID();
+
+    // Perbarui active_session_id di database
+    await pool.query(
+      'UPDATE pengguna SET active_session_id = ? WHERE id_pengguna = ?',
+      [sessionId, user.id_pengguna]
+    );
+
+    // TC-49: Generate JWT token berlaku maksimal 3 jam (NFR-06)
     const secret = process.env.JWT_SECRET || 'xunklab_super_secret_jwt_key_filkom_unklab_2026';
     const token = jwt.sign(
       {
@@ -88,18 +118,21 @@ exports.login = async (req, res) => {
         session_id: sessionId
       },
       secret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '3h' }
+      { expiresIn: '3h' }
     );
 
     return res.status(200).json({
       success: true,
       message: 'Login berhasil.',
       token,
+      expires_in: 3 * 60 * 60, // 10800 detik (3 jam)
       user: {
         id_pengguna: user.id_pengguna,
         username: user.username,
         role: user.role,
         status_akun: user.status_akun,
+        nama: profile ? (profile.nama || profile.nama_dosen) : user.username,
+        detail: profile,
         profile
       }
     });

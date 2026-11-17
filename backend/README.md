@@ -93,19 +93,19 @@ mysql -u root -p < database/seed.sql
 
 ---
 
-## 5. Akun Uji Coba Default (Seeding)
+## 5. Akun Uji Coba Default (Seeding — TC-01 s.d. TC-06)
 
-| Peran | Username / NIM | Password | Nama Lengkap |
+| Peran | Username / NIM / NIP | Password | Nama Lengkap |
 |---|---|---|---|
-| **Dosen** | `dosen` | `dosen123` | George M. W. Tangka, S.Kom., MBA |
-| **Mahasiswa** | `105022410021` | `mhs123` | Tulengkey, Juan Messi Septhian |
-| **Mahasiswa** | `105022510107` | `mhs123` | Tuwaidan, Jeniffer Diana |
-| **Mahasiswa** | `105022410095` | `mhs123` | Sumual, Valentino |
-| **Mahasiswa** | `105022410007` | `mhs123` | Sahetapy, Wilman Valentino |
-| **Mahasiswa** | `105022510475` | `mhs123` | Laluyan, Matthew Arnold M |
-| **Akun Terkunci** | `terkunci` | `mhs123` | Mahasiswa Terkunci (Demo Penolakan Login) |
+| **Dosen** | `dosen` atau NIP `198501012010011001` | `dosen123` | George M. W. Tangka, S.Kom., MBA |
+| **Mahasiswa** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian |
+| **Mahasiswa** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana |
+| **Mahasiswa** | `105022410095` | `123` | Sumual, Valentino |
+| **Mahasiswa** | `105022410007` | `123` | Sahetapy, Wilman Valentino |
+| **Mahasiswa** | `105022510475` | `123` | Laluyan, Matthew Arnold M |
+| **Akun Terkunci (TC-04)** | `105022499999` atau `terkunci` | `123` | Mahasiswa Terkunci (Demo Penolakan Login) |
 
-> **PIN Ujian Default:** `SAD2026` untuk ujian *UTS Sistem Analisis & Desain (SAD)*.
+> **PIN Ujian Default (TC-06):** `483920` (6 digit) untuk ujian *UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027*.
 
 ---
 

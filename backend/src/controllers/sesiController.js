@@ -1,7 +1,7 @@
 /**
  * src/controllers/sesiController.js
- * Controller untuk autosave jawaban, detail sesi aktif, dan submit ujian
- * (FR-07, FR-11, FR-17, FR-18, BR-05, BR-06, BR-07, NFR-02, NFR-13, NFR-14).
+ * Controller untuk autosave jawaban, detail sesi aktif, sinkronisasi waktu, dan submit ujian
+ * Mencakup TC-11 s.d. TC-13, TC-22 s.d. TC-26, TC-39, TC-42, TC-45, TC-51.
  */
 
 const { pool, withTransaction } = require('../config/db');
@@ -9,7 +9,7 @@ const { generateId } = require('../utils/idGenerator');
 const { gradeSingleAnswer, calculateTotalScore } = require('../utils/autoGrader');
 
 /**
- * Detail sesi aktif mahasiswa
+ * Detail sesi aktif mahasiswa + sinkronisasi sisa waktu server (TC-13, TC-42, TC-51)
  */
 exports.getSesiAktif = async (req, res) => {
   try {
@@ -17,11 +17,11 @@ exports.getSesiAktif = async (req, res) => {
     const idMahasiswa = req.user.id_profil;
 
     const [sesiRows] = await pool.query(
-      `SELECT s.*, u.nama_ujian, u.durasi, u.batas_toleransi_pelanggaran
+      `SELECT s.*, u.nama_ujian, u.durasi, u.batas_toleransi_pelanggaran, u.acak_aktif, u.acak_opsi
        FROM sesi_ujian_mahasiswa s
        JOIN ujian u ON s.id_ujian = u.id_ujian
-       WHERE s.id_sesi = ? AND s.id_mahasiswa = ?`,
-      [id_sesi, idMahasiswa]
+       WHERE s.id_sesi = ? AND (s.id_mahasiswa = ? OR ? = 'Dosen')`,
+      [id_sesi, idMahasiswa, req.user.role]
     );
 
     if (sesiRows.length === 0) {
@@ -33,13 +33,30 @@ exports.getSesiAktif = async (req, res) => {
 
     const sesi = sesiRows[0];
 
-    // Ambil daftar soal
+    // Hitung sisa waktu server aktual termasuk tambahan waktu dari dosen (TC-42)
+    let sisaWaktuAktual = sesi.sisa_waktu;
+    if (sesi.status_ujian === 'Berlangsung') {
+      const now = new Date();
+      const waktuMulaiSesi = new Date(sesi.waktu_mulai);
+      const tambahanMenit = parseInt(sesi.tambahan_waktu, 10) || 0;
+      const totalDurasiDetik = (sesi.durasi + tambahanMenit) * 60;
+      const detikBerjalan = Math.floor((now.getTime() - waktuMulaiSesi.getTime()) / 1000);
+      sisaWaktuAktual = Math.max(0, totalDurasiDetik - detikBerjalan);
+
+      await pool.query(
+        'UPDATE sesi_ujian_mahasiswa SET sisa_waktu = ? WHERE id_sesi = ?',
+        [sisaWaktuAktual, id_sesi]
+      );
+    }
+
+    // Ambil daftar soal sesuai urutan sesi
     const [soalRows] = await pool.query(
       `SELECT 
         s.id_soal,
         s.tipe_soal,
         s.pertanyaan,
         s.bobot,
+        j.id_jawaban,
         j.urutan_soal,
         j.urutan_opsi,
         j.jawaban_dipilih
@@ -58,6 +75,7 @@ exports.getSesiAktif = async (req, res) => {
         opsi = [];
       }
       return {
+        id_jawaban: q.id_jawaban,
         id_soal: q.id_soal,
         tipe_soal: q.tipe_soal,
         pertanyaan: q.pertanyaan,
@@ -76,9 +94,12 @@ exports.getSesiAktif = async (req, res) => {
           id_ujian: sesi.id_ujian,
           nama_ujian: sesi.nama_ujian,
           durasi: sesi.durasi,
-          sisa_waktu: sesi.sisa_waktu,
+          tambahan_waktu: parseInt(sesi.tambahan_waktu, 10) || 0,
+          sisa_waktu: sisaWaktuAktual,
           jumlah_peringatan: sesi.jumlah_peringatan,
           batas_toleransi_pelanggaran: sesi.batas_toleransi_pelanggaran,
+          acak_aktif: Boolean(sesi.acak_aktif),
+          acak_opsi: Boolean(sesi.acak_opsi),
           status_ujian: sesi.status_ujian
         },
         soal: questions
@@ -94,18 +115,20 @@ exports.getSesiAktif = async (req, res) => {
 };
 
 /**
- * Autosave Jawaban Mahasiswa (FR-07, BR-05, NFR-02, NFR-13)
+ * Autosave Jawaban Mahasiswa — mendukung satu soal maupun batch seluruh jawaban
+ * (TC-11: interval 30 detik, TC-12: pindah nomor soal, TC-42: sinkronisasi tambah waktu, TC-45: <= 2 detik)
  */
 exports.autosaveJawaban = async (req, res) => {
+  const startTime = Date.now();
   try {
     const { id_sesi } = req.params;
-    const { id_soal, jawaban_dipilih, sisa_waktu } = req.body;
+    const { id_soal, jawaban_dipilih, jawaban_batch } = req.body;
     const idMahasiswa = req.user.id_profil;
 
-    if (!id_soal) {
+    if (!id_soal && (!Array.isArray(jawaban_batch) || jawaban_batch.length === 0)) {
       return res.status(400).json({
         success: false,
-        message: 'id_soal wajib disertakan dalam autosave.'
+        message: 'id_soal atau jawaban_batch wajib disertakan dalam autosave.'
       });
     }
 
@@ -129,53 +152,56 @@ exports.autosaveJawaban = async (req, res) => {
     if (sesi.status_ujian !== 'Berlangsung') {
       return res.status(400).json({
         success: false,
+        status_ujian: sesi.status_ujian,
         message: `Sesi ujian telah berstatus '${sesi.status_ujian}'. Jawaban tidak dapat disimpan lagi.`
       });
     }
 
-    // 2. Hitung validitas sisa waktu dari server clock
+    // 2. Hitung sisa waktu aktual dari jam server + tambahan waktu dosen (TC-42)
     const now = new Date();
     const waktuMulaiSesi = new Date(sesi.waktu_mulai);
-    const totalDurasiDetik = sesi.durasi * 60;
+    const tambahanMenit = parseInt(sesi.tambahan_waktu, 10) || 0;
+    const totalDurasiDetik = (sesi.durasi + tambahanMenit) * 60;
     const detikBerjalan = Math.floor((now.getTime() - waktuMulaiSesi.getTime()) / 1000);
     const sisaWaktuServer = Math.max(0, totalDurasiDetik - detikBerjalan);
 
-    if (sisaWaktuServer <= 0) {
+    // 3. Simpan perubahan jawaban (single dan/atau batch)
+    if (Array.isArray(jawaban_batch) && jawaban_batch.length > 0) {
+      for (const item of jawaban_batch) {
+        if (item && item.id_soal) {
+          await pool.query(
+            `UPDATE jawaban_mahasiswa 
+             SET jawaban_dipilih = ?, waktu_disimpan = NOW()
+             WHERE id_sesi = ? AND id_soal = ?`,
+            [item.jawaban_dipilih !== undefined ? item.jawaban_dipilih : null, id_sesi, item.id_soal]
+          );
+        }
+      }
+    } else if (id_soal) {
       await pool.query(
-        `UPDATE sesi_ujian_mahasiswa SET status_ujian = 'Disubmit Otomatis', sisa_waktu = 0 WHERE id_sesi = ?`,
-        [id_sesi]
+        `UPDATE jawaban_mahasiswa 
+         SET jawaban_dipilih = ?, waktu_disimpan = NOW()
+         WHERE id_sesi = ? AND id_soal = ?`,
+        [jawaban_dipilih !== undefined ? jawaban_dipilih : null, id_sesi, id_soal]
       );
-      return res.status(400).json({
-        success: false,
-        message: 'Waktu ujian telah habis. Jawaban disubmit otomatis.'
-      });
     }
-
-    // Tentukan sisa waktu yang disimpan (prioritaskan server time atau request jika lebih kecil)
-    const sisaWaktuToSave = typeof sisa_waktu === 'number'
-      ? Math.min(sisaWaktuServer, Math.max(0, sisa_waktu))
-      : sisaWaktuServer;
-
-    // 3. Simpan jawaban dan perbarui sisa waktu secara atomik
-    await pool.query(
-      `UPDATE jawaban_mahasiswa 
-       SET jawaban_dipilih = ?, waktu_disimpan = NOW()
-       WHERE id_sesi = ? AND id_soal = ?`,
-      [jawaban_dipilih !== undefined ? jawaban_dipilih : null, id_sesi, id_soal]
-    );
 
     await pool.query(
       `UPDATE sesi_ujian_mahasiswa SET sisa_waktu = ? WHERE id_sesi = ?`,
-      [sisaWaktuToSave, id_sesi]
+      [sisaWaktuServer, id_sesi]
     );
+
+    const responseTimeMs = Date.now() - startTime;
 
     return res.status(200).json({
       success: true,
       message: 'Jawaban berhasil disimpan otomatis.',
+      response_time_ms: responseTimeMs,
       data: {
-        id_soal,
+        id_soal: id_soal || null,
         waktu_disimpan: new Date().toISOString(),
-        sisa_waktu: sisaWaktuToSave
+        sisa_waktu: sisaWaktuServer,
+        tambahan_waktu: tambahanMenit
       }
     });
   } catch (error) {
@@ -188,13 +214,13 @@ exports.autosaveJawaban = async (req, res) => {
 };
 
 /**
- * Submit Ujian (Manual atau Otomatis Waktu Habis)
- * (FR-11, FR-17, FR-18, BR-06, BR-07, NFR-14)
+ * Submit Ujian (Manual, Retry Offline, atau Otomatis Waktu Habis 00:00)
+ * Mencakup TC-22, TC-24, TC-25, TC-26, TC-39
  */
 exports.submitUjian = async (req, res) => {
   try {
     const { id_sesi } = req.params;
-    const { otomatis } = req.body;
+    const { otomatis, jawaban_terakhir } = req.body;
     const idMahasiswa = req.user.id_profil;
 
     const [sesiRows] = await pool.query(
@@ -221,10 +247,22 @@ exports.submitUjian = async (req, res) => {
         'SELECT * FROM bukti_ujian_hasil WHERE id_sesi = ?',
         [id_sesi]
       );
+      const b = buktiExisting[0];
       return res.status(200).json({
         success: true,
         message: `Ujian sudah diselesaikan sebelumnya (${sesi.status_ujian}).`,
-        resi: buktiExisting[0] || null
+        resi: b
+          ? {
+              id_bukti: b.id_bukti,
+              id_sesi,
+              nama_mahasiswa: sesi.nama_mahasiswa,
+              nim: sesi.nim,
+              nama_ujian: sesi.nama_ujian,
+              status_pengiriman: b.status_pengiriman,
+              waktu_pengiriman: b.waktu_pengiriman,
+              total_nilai: b.total_nilai
+            }
+          : null
       });
     }
 
@@ -233,10 +271,24 @@ exports.submitUjian = async (req, res) => {
       const statusFinal = otomatis ? 'Disubmit Otomatis' : 'Selesai';
       const statusPengiriman = otomatis ? 'Otomatis' : 'Berhasil';
 
-      // 1. Ubah status sesi
+      // Sinkronkan jawaban_terakhir dari klien (misal dari offline retry queue / TC-24 / TC-26)
+      if (Array.isArray(jawaban_terakhir) && jawaban_terakhir.length > 0) {
+        for (const item of jawaban_terakhir) {
+          if (item && item.id_soal && item.jawaban_dipilih !== undefined) {
+            await conn.query(
+              `UPDATE jawaban_mahasiswa 
+               SET jawaban_dipilih = ?, waktu_disimpan = NOW()
+               WHERE id_sesi = ? AND id_soal = ?`,
+              [item.jawaban_dipilih, id_sesi, item.id_soal]
+            );
+          }
+        }
+      }
+
+      // 1. Ubah status sesi & bersihkan active_device_token
       await conn.query(
         `UPDATE sesi_ujian_mahasiswa 
-         SET status_ujian = ?, sisa_waktu = 0 
+         SET status_ujian = ?, sisa_waktu = 0, active_device_token = NULL 
          WHERE id_sesi = ?`,
         [statusFinal, id_sesi]
       );
@@ -250,7 +302,7 @@ exports.submitUjian = async (req, res) => {
         [id_sesi]
       );
 
-      // 3. Jalankan penilaian otomatis
+      // 3. TC-39: Jalankan penilaian otomatis untuk soal objektif
       const gradePayload = [];
       for (const item of jawabanList) {
         const nilai = gradeSingleAnswer(
@@ -262,7 +314,6 @@ exports.submitUjian = async (req, res) => {
           item.jawaban_dipilih
         );
 
-        // Update nilai_soal
         await conn.query(
           `UPDATE jawaban_mahasiswa SET nilai_soal = ? WHERE id_jawaban = ?`,
           [nilai, item.id_jawaban]
@@ -278,17 +329,19 @@ exports.submitUjian = async (req, res) => {
       // 4. Hitung total nilai akhir
       const { totalNilai, adaEsaiPending } = calculateTotalScore(gradePayload);
 
-      // 5. Buat Resi Bukti Ujian Resmi (bukti_ujian_hasil)
+      // 5. TC-25: Buat Resi Bukti Ujian Resmi (bukti_ujian_hasil)
       const idBukti = generateId('BKT', 8);
       await conn.query(
         `INSERT INTO bukti_ujian_hasil 
           (id_bukti, id_sesi, waktu_pengiriman, status_pengiriman, total_nilai, status_keputusan)
-         VALUES (?, ?, NOW(), ?, ?, 'Tidak Ada')`,
+         VALUES (?, ?, NOW(), ?, ?, 'Tidak Ada')
+         ON DUPLICATE KEY UPDATE status_pengiriman = VALUES(status_pengiriman), total_nilai = VALUES(total_nilai)`,
         [idBukti, id_sesi, statusPengiriman, totalNilai]
       );
 
       return {
         idBukti,
+        statusFinal,
         statusPengiriman,
         totalNilai,
         adaEsaiPending,
@@ -298,13 +351,16 @@ exports.submitUjian = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Ujian berhasil diserahkan.',
+      message: otomatis
+        ? 'Waktu habis (00:00). Jawaban terakhir Anda berhasil dikirim secara otomatis (TC-26).'
+        : 'Ujian berhasil diserahkan (TC-22).',
       resi: {
         id_bukti: hasilSubmit.idBukti,
         id_sesi,
         nama_mahasiswa: sesi.nama_mahasiswa,
         nim: sesi.nim,
         nama_ujian: sesi.nama_ujian,
+        status_ujian: hasilSubmit.statusFinal,
         status_pengiriman: hasilSubmit.statusPengiriman,
         waktu_pengiriman: hasilSubmit.waktuPengiriman,
         ada_soal_esai_pending: hasilSubmit.adaEsaiPending

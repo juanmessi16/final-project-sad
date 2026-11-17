@@ -1,7 +1,7 @@
 /**
  * server.js
  * Entrypoint server Express REST API untuk Sistem Ujian xUnklab.
- * Mengintegrasikan CORS, Helmet, JWT Auth, Database Connection Pool, dan rute modular.
+ * Mengintegrasikan HTTPS Redirect (TC-48), CORS, Helmet, JWT Auth, Database Connection Pool, dan rute modular.
  */
 
 const express = require('express');
@@ -11,6 +11,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const { testConnection } = require('./src/config/db');
+const { enforceHttps, immutableLogGuard } = require('./src/middlewares/securityMiddleware');
 
 // Import modular routes
 const authRoutes = require('./src/routes/authRoutes');
@@ -22,14 +23,20 @@ const dosenRoutes = require('./src/routes/dosenRoutes');
 
 const app = express();
 
+// Trust proxy agar X-Forwarded-Proto dan X-Forwarded-For terbaca akurat
+app.set('trust proxy', true);
+
+// TC-48: Paksa redirect HTTP ke HTTPS jika header/konfigurasi diaktifkan
+app.use(enforceHttps);
+
 // Security & Parsing Middlewares
 app.use(helmet());
 app.use(
   cors({
     origin: process.env.CLIENT_URL || '*',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Simulated-IP', 'X-Enforce-HTTPS', 'X-Device-ID']
   })
 );
 app.use(express.json());
@@ -46,6 +53,9 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// TC-52: Proteksi langsung rute log_pelanggaran dari modifikasi
+app.all('/api/log-pelanggaran*', immutableLogGuard);
+
 // Mount API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/ujian', ujianRoutes);
@@ -58,7 +68,7 @@ app.use('/api/dosen', dosenRoutes);
 app.get('/', (req, res) => {
   res.json({
     name: 'xUnklab Exam System API',
-    version: '1.0.0',
+    version: '2.0.0',
     institution: 'Fakultas Ilmu Komputer, Universitas Klabat',
     documentation: '/api/health'
   });
@@ -84,18 +94,22 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, async () => {
-  console.log(`=======================================================`);
-  console.log(` Server REST API xUnklab berjalan pada port: ${PORT}`);
-  console.log(` Waktu Server: ${new Date().toLocaleString('id-ID')}`);
-  console.log(` Menguji koneksi database MySQL...`);
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    console.log(`=======================================================`);
+    console.log(` Server REST API xUnklab berjalan pada port: ${PORT}`);
+    console.log(` Waktu Server: ${new Date().toLocaleString('id-ID')}`);
+    console.log(` Menguji koneksi database MySQL...`);
 
-  const connected = await testConnection();
-  if (connected) {
-    console.log(` [BERHASIL] Koneksi ke database MySQL '${process.env.DB_NAME || 'xunklab_db'}' stabil.`);
-  } else {
-    console.warn(` [PERINGATAN] Koneksi ke MySQL gagal!`);
-    console.warn(` Pastikan MySQL berjalan (XAMPP / MySQL Service) dan database '${process.env.DB_NAME || 'xunklab_db'}' telah diimpor.`);
-  }
-  console.log(`=======================================================`);
-});
+    const connected = await testConnection();
+    if (connected) {
+      console.log(` [BERHASIL] Koneksi ke database MySQL '${process.env.DB_NAME || 'xunklab_db'}' stabil.`);
+    } else {
+      console.warn(` [PERINGATAN] Koneksi ke MySQL gagal!`);
+      console.warn(` Pastikan MySQL berjalan (XAMPP / MySQL Service) dan database '${process.env.DB_NAME || 'xunklab_db'}' telah diimpor.`);
+    }
+    console.log(`=======================================================`);
+  });
+}
+
+module.exports = app;

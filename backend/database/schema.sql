@@ -51,10 +51,12 @@ CREATE TABLE `pengguna` (
 CREATE TABLE `dosen` (
   `id_dosen` VARCHAR(20) NOT NULL,
   `id_pengguna` VARCHAR(20) NOT NULL,
+  `nip` VARCHAR(30) NULL DEFAULT '198501012010011001',
   `nama_dosen` VARCHAR(100) NOT NULL,
   `mata_kuliah` VARCHAR(100) NOT NULL,
   PRIMARY KEY (`id_dosen`),
   UNIQUE KEY `uq_dosen_id_pengguna` (`id_pengguna`),
+  KEY `idx_dosen_nip` (`nip`),
   CONSTRAINT `fk_dosen_pengguna`
     FOREIGN KEY (`id_pengguna`) REFERENCES `pengguna` (`id_pengguna`)
     ON DELETE CASCADE ON UPDATE CASCADE
@@ -124,6 +126,9 @@ CREATE TABLE `ujian` (
   `pin_ujian` VARCHAR(10) NOT NULL,
   `maks_percobaan` INT NOT NULL DEFAULT 1,
   `acak_aktif` BOOLEAN NOT NULL DEFAULT TRUE,
+  `acak_opsi` BOOLEAN NOT NULL DEFAULT TRUE,
+  `batasi_jaringan_kampus` BOOLEAN NOT NULL DEFAULT FALSE,
+  `subnet_kampus` VARCHAR(255) NOT NULL DEFAULT '127.0.0.1,::1,192.168.,10.,172.16.',
   `batas_toleransi_pelanggaran` INT NOT NULL DEFAULT 3,
   `hasil_dipublikasikan` BOOLEAN NOT NULL DEFAULT FALSE,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -148,7 +153,7 @@ CREATE TABLE `ujian_soal` (
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_us_soal`
     FOREIGN KEY (`id_soal`) REFERENCES `soal` (`id_soal`)
-    ON DELETE RESTRICT ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -157,6 +162,7 @@ CREATE TABLE `ujian_soal` (
 CREATE TABLE `peserta_ujian` (
   `id_ujian` VARCHAR(20) NOT NULL,
   `id_mahasiswa` VARCHAR(20) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_ujian`, `id_mahasiswa`),
   KEY `idx_pu_mahasiswa` (`id_mahasiswa`),
   CONSTRAINT `fk_pu_ujian`
@@ -177,6 +183,8 @@ CREATE TABLE `sesi_ujian_mahasiswa` (
   `percobaan_ke` INT NOT NULL DEFAULT 1,
   `waktu_mulai` DATETIME NOT NULL,
   `sisa_waktu` INT NOT NULL COMMENT 'Sisa waktu dalam detik',
+  `tambahan_waktu` INT NOT NULL DEFAULT 0 COMMENT 'Tambahan waktu dalam menit (TC-42)',
+  `active_device_token` VARCHAR(100) NULL COMMENT 'Token perangkat aktif untuk Single Active Device (TC-05)',
   `jumlah_peringatan` INT NOT NULL DEFAULT 0,
   `status_ujian` ENUM('Berlangsung', 'Selesai', 'Dikunci Paksa', 'Disubmit Otomatis') NOT NULL DEFAULT 'Berlangsung',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -233,7 +241,7 @@ CREATE TABLE `log_pelanggaran` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- Triggers Proteksi Log Pelanggaran (NFR-15: Append-Only Immutable Log)
+-- Triggers Proteksi Log Pelanggaran (NFR-15 / TC-52: Append-Only Immutable Log)
 -- -----------------------------------------------------------------------------
 DELIMITER $$
 

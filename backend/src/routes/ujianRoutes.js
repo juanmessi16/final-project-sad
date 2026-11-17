@@ -12,7 +12,7 @@ const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
 router.get(
   '/mahasiswa',
   verifyToken,
-  requireRole('Mahasiswa'),
+  requireRole('Mahasiswa', 'Dosen'),
   ujianController.getDaftarUjianMahasiswa
 );
 
@@ -20,7 +20,7 @@ router.get(
 router.post(
   '/:id_ujian/mulai',
   verifyToken,
-  requireRole('Mahasiswa'),
+  requireRole('Mahasiswa', 'Dosen'),
   ujianController.mulaiAtauPulihkanUjian
 );
 
