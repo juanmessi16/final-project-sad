@@ -2,7 +2,7 @@
 
 Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, Universitas Klabat** yang membantu Dosen dan Mahasiswa dalam menyelenggarakan ujian daring secara aman, transparan, dan terstruktur dengan proteksi **anti-curang tanpa kamera** agar integritas akademik tetap terjaga.
 
-![Halaman utama](![alt text](image.png))
+![Halaman utama](![alt text](screenshot/image.png))
 
 | | |
 |---|---|
