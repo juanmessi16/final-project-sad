@@ -531,12 +531,18 @@ function StudentDashboard({
   onStartExam: (sessionData: any) => void;
 }) {
   const student = formatStudentName(currentUser);
+  const [activeNav, setActiveNav] = useState<"Ikut Ujian" | "Lihat Nilai">("Ikut Ujian");
+  const [examFilterTab, setExamFilterTab] = useState<
+    "Semua Ujian" | "Tersedia / Aktif" | "Akan Datang" | "Selesai / Terkunci"
+  >("Semua Ujian");
   const [dbState, setDbState] = useState(() => loadLocalDB());
   const [pinExam, setPinExam] = useState<ExamItem | null>(null);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [multiDeviceBlocked, setMultiDeviceBlocked] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
+  const [selectedResultSession, setSelectedResultSession] = useState<any | null>(null);
+  const [receiptSession, setReceiptSession] = useState<any | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [currentIp, setCurrentIp] = useState(() => getSimulatedIp());
@@ -547,21 +553,58 @@ function StudentDashboard({
 
   useEffect(() => {
     refreshState();
-  }, []);
+  }, [activeNav]);
 
   const examsList: ExamItem[] = dbState.exams || [];
   const mainExam = examsList[0];
 
-  // Cari sesi hasil terbaru untuk mahasiswa ini (TC-27, TC-28, TC-39, TC-40)
+  // Cari sesi hasil untuk mahasiswa ini (TC-25, TC-27, TC-28, TC-36, TC-39, TC-40)
   const studentSessions = (dbState.sessions || []).filter((s: any) => s.nim === student.nim);
   const latestSession = studentSessions[studentSessions.length - 1] || null;
-  const currentStudentExam = examsList.find((e) => e.id_ujian === latestSession?.id_ujian) || mainExam;
+  const activeDetailSession = selectedResultSession || latestSession;
+  const currentStudentExam =
+    examsList.find((e) => e.id_ujian === activeDetailSession?.id_ujian) || mainExam;
   const isPublished = Boolean(currentStudentExam?.hasil_dipublikasikan);
-  const hasUngradedEssay = latestSession ? Boolean(latestSession.has_ungraded_essay) : false;
+  const hasUngradedEssay = activeDetailSession ? Boolean(activeDetailSession.has_ungraded_essay) : false;
   const finalScoreDisplay =
-    isPublished && latestSession && !hasUngradedEssay && latestSession.total_nilai !== null && latestSession.total_nilai !== undefined
-      ? String(latestSession.total_nilai)
+    isPublished &&
+    activeDetailSession &&
+    !hasUngradedEssay &&
+    activeDetailSession.total_nilai !== null &&
+    activeDetailSession.total_nilai !== undefined
+      ? String(activeDetailSession.total_nilai)
       : "Belum dinilai";
+
+  const publishedGradedSessions = studentSessions.filter((s: any) => {
+    const ex = examsList.find((e) => e.id_ujian === s.id_ujian) || mainExam;
+    return (
+      Boolean(ex?.hasil_dipublikasikan) &&
+      !s.has_ungraded_essay &&
+      s.total_nilai !== null &&
+      s.total_nilai !== undefined
+    );
+  });
+
+  const pendingOrUnpublishedCount = studentSessions.length - publishedGradedSessions.length;
+  const avgPublishedScore =
+    publishedGradedSessions.length > 0
+      ? (
+          publishedGradedSessions.reduce((acc: number, curr: any) => acc + Number(curr.total_nilai), 0) /
+          publishedGradedSessions.length
+        ).toFixed(1)
+      : "-";
+
+  const getGradeLetter = (score: number) => {
+    if (score >= 85) return "A";
+    if (score >= 80) return "A-";
+    if (score >= 75) return "B+";
+    if (score >= 70) return "B";
+    if (score >= 65) return "B-";
+    if (score >= 60) return "C+";
+    if (score >= 55) return "C";
+    if (score >= 40) return "D";
+    return "E";
+  };
 
   // Notifikasi Jadwal Ujian bagi Mahasiswa Terdaftar (TC-43)
   const isStudentRegistered = (dbState.participants || []).some((p: ParticipantItem) => p.nim === student.nim);
@@ -622,258 +665,809 @@ function StudentDashboard({
     return "Tersedia";
   };
 
+  const studentNavItems: Array<[string, "Ikut Ujian" | "Lihat Nilai"]> = [
+    ["exam", "Ikut Ujian"],
+    ["award", "Lihat Nilai"],
+  ];
+
+  const filteredExams = examsList.filter((exam) => {
+    const statusLabel = getExamStatusLabel(exam);
+    if (examFilterTab === "Semua Ujian") return true;
+    if (examFilterTab === "Tersedia / Aktif") {
+      return statusLabel === "Tersedia" || statusLabel === "Sedang Berlangsung";
+    }
+    if (examFilterTab === "Akan Datang") {
+      return statusLabel === "Akan datang";
+    }
+    return (
+      statusLabel === "Jadwal Berakhir" ||
+      statusLabel === "Terkirim" ||
+      statusLabel === "Selesai" ||
+      statusLabel === "Disubmit Otomatis" ||
+      statusLabel === "Sesi Dikunci Paksa" ||
+      statusLabel === "Dikunci Paksa" ||
+      statusLabel === "Diskualifikasi"
+    );
+  });
+
   return (
-    <div className="app-shell student-shell">
-      <header className="topbar">
-        <Brand compact />
-        <div className="profile-actions" style={{ position: "relative" }}>
-          <button
-            aria-label="Notifikasi"
-            className="icon-button"
-            onClick={() => setNotifOpen(!notifOpen)}
-            title="Notifikasi Jadwal Ujian (TC-43)"
-          >
-            <Icon name="bell" size={19} />
-            {notifications.length > 0 && <span className="notification-dot" />}
-          </button>
-
-          {notifOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top: "48px",
-                right: "140px",
-                width: "320px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12)",
-                padding: "14px",
-                zIndex: 50,
-              }}
+    <div className="lecturer-layout">
+      {/* Sidebar Kiri Tetap (Identik dengan Portal Dosen) */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <Brand compact />
+        </div>
+        <nav>
+          <p>MENU UTAMA</p>
+          {studentNavItems.map(([icon, label]) => (
+            <button
+              className={activeNav === label ? "active" : ""}
+              key={label}
+              onClick={() => setActiveNav(label)}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <strong style={{ fontSize: "13px" }}>Notifikasi Jadwal Ujian ({notifications.length})</strong>
-                <button
-                  onClick={() => setNotifOpen(false)}
-                  style={{ background: "none", border: "none", fontSize: "12px", cursor: "pointer", color: "#64748b" }}
-                >
-                  Tutup
-                </button>
-              </div>
-              {notifications.length === 0 ? (
-                <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>Belum ada jadwal ujian terdaftar.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      style={{
-                        padding: "8px 10px",
-                        background: "#f8fafc",
-                        borderRadius: "8px",
-                        borderLeft: "3px solid #3d6373",
-                        fontSize: "12px",
-                      }}
-                    >
-                      <strong style={{ display: "block", color: "#1e293b" }}>{n.title}</strong>
-                      <span style={{ color: "#64748b" }}>{n.meta}</span>
-                    </div>
-                  ))}
-                </div>
+              <Icon name={icon} size={19} /> <span>{label}</span>
+              {label === "Lihat Nilai" && publishedGradedSessions.length > 0 && (
+                <b>{publishedGradedSessions.length}</b>
               )}
-            </div>
-          )}
-
-          <span className="topbar-divider" />
-          <div className="avatar">{student.initials}</div>
-          <div className="profile-text">
-            <strong>{student.fullName}</strong>
-            <span>{student.nim}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-security">
+          <Icon name="shield" size={20} />
+          <div>
+            <strong>Sistem terlindungi</strong>
+            <span>Semua aktivitas tercatat</span>
           </div>
-          <button className="logout-button" onClick={onLogout}>
-            <Icon name="logout" size={17} /> <span>Keluar</span>
+        </div>
+        <div className="sidebar-profile">
+          <div className="avatar">{student.initials}</div>
+          <div>
+            <strong>{student.fullName}</strong>
+            <span>NIM: {student.nim}</span>
+          </div>
+          <button aria-label="Keluar" onClick={onLogout} title="Keluar dari Portal Mahasiswa">
+            <Icon name="logout" size={18} />
           </button>
         </div>
-      </header>
-      <main className="dashboard-content">
-        <section className="welcome-row">
-          <div>
-            <p className="section-kicker">FAKULTAS ILMU KOMPUTER · UNIVERSITAS KLABAT</p>
-            <h1>Selamat pagi, {student.shortName}.</h1>
-            <p>Berikut jadwal ujian yang telah disiapkan untukmu.</p>
-          </div>
-          <div className="date-card">
-            <Icon name="calendar" size={21} />
-            <div>
-              <span>Semester Ganjil</span>
-              <strong>2026 / 2027</strong>
-            </div>
-          </div>
-        </section>
+      </aside>
 
-        {/* TC-43: Banner Notifikasi Jadwal Ujian Baru */}
-        {notifications.length > 0 && (
-          <div
-            style={{
-              background: "#f0f9ff",
-              border: "1px solid #bae6fd",
-              borderRadius: "12px",
-              padding: "12px 16px",
-              marginBottom: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-              fontSize: "13px",
-              color: "#0c4a6e",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Icon name="bell" size={18} />
-              <span>
-                <strong>Notifikasi Jadwal Ujian Baru (TC-43):</strong> Anda terdaftar pada{" "}
-                <b>{notifications.length} jadwal ujian</b>. Pastikan perangkat siap sebelum ujian dimulai.
-              </span>
-            </div>
-            <span style={{ fontSize: "12px", fontWeight: 600 }}>Status: Terdaftar</span>
-          </div>
-        )}
+      {/* Area Konten Utama di Kanan */}
+      <main className="lecturer-main">
+        <header className="mobile-lecturer-header">
+          <Brand compact />
+          <button onClick={onLogout} aria-label="Keluar">
+            <Icon name="logout" />
+          </button>
+        </header>
 
-        <section>
-          <div className="section-heading">
-            <div>
-              <h2>Jadwal Ujian</h2>
-              <p>Pastikan perangkat dan koneksi internetmu siap. (PIN tidak pernah diekspos di UI/API - TC-50)</p>
-            </div>
-            <span className="exam-count">{examsList.length} ujian</span>
-          </div>
-          <div className="exam-grid">
-            {examsList.map((exam, index) => {
-              const statusLabel = getExamStatusLabel(exam);
-              const isAvailable = statusLabel === "Tersedia" || statusLabel === "Sedang Berlangsung";
-              return (
-                <article className={`exam-card ${isAvailable ? "available" : ""}`} key={exam.id_ujian}>
-                  <div className="card-topline">
-                    <span className={`status ${isAvailable ? "status-live" : ""}`}>
-                      {isAvailable && <i />}
-                      {statusLabel}
-                    </span>
-                    <button
-                      aria-label="Menu ujian"
-                      onClick={() => {
-                        setPinExam(exam);
-                        setPin("");
-                        setPinError("");
-                        setMultiDeviceBlocked(false);
-                      }}
-                    >
-                      <Icon name="dots" />
-                    </button>
-                  </div>
-                  <div className="subject-icon">
-                    <Icon name="exam" size={22} />
-                  </div>
-                  <p className="course-code">{exam.kode_mk || `UJN-0${index + 1}`}</p>
-                  <h3>{exam.nama_ujian}</h3>
-                  <div className="exam-meta">
-                    <span>
-                      <Icon name="calendar" size={17} />
-                      Mulai: {exam.tanggal_waktu_mulai}
-                    </span>
-                    <span>
-                      <Icon name="clock" size={17} />
-                      Selesai: {exam.tanggal_waktu_selesai} · {exam.durasi} menit
-                    </span>
-                  </div>
-                  <button
-                    className={`button exam-button ${isAvailable ? "primary" : "secondary"}`}
-                    onClick={() => {
-                      setPinExam(exam);
-                      setPin("");
-                      setPinError("");
-                      setMultiDeviceBlocked(false);
+        <div className="mobile-nav">
+          {studentNavItems.map(([icon, label]) => (
+            <button
+              className={activeNav === label ? "active" : ""}
+              key={label}
+              onClick={() => setActiveNav(label)}
+            >
+              <Icon name={icon} size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {activeNav === "Ikut Ujian" ? (
+          <>
+            {/* Header Halaman Ikut Ujian */}
+            <div className="lecturer-top" style={{ position: "relative" }}>
+              <div>
+                <p className="section-kicker">FAKULTAS ILMU KOMPUTER · PORTAL MAHASISWA</p>
+                <h1>Ikut Ujian</h1>
+                <p>Selamat pagi, {student.shortName}. Berikut jadwal ujian yang telah disiapkan untukmu.</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", position: "relative" }}>
+                <button
+                  aria-label="Notifikasi"
+                  className="icon-button"
+                  onClick={() => setNotifOpen(!notifOpen)}
+                  title="Notifikasi Jadwal Ujian (TC-43)"
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "12px",
+                  }}
+                >
+                  <Icon name="bell" size={19} />
+                  {notifications.length > 0 && <span className="notification-dot" />}
+                </button>
+
+                {notifOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "54px",
+                      right: 0,
+                      width: "320px",
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "12px",
+                      boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+                      padding: "14px",
+                      zIndex: 50,
                     }}
                   >
-                    {statusLabel === "Sedang Berlangsung"
-                      ? "Lanjutkan Sesi Ujian"
-                      : isAvailable
-                        ? "Mulai Ujian"
-                        : `Cek Akses (${statusLabel})`}
-                    <Icon name="arrow" size={17} />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <strong style={{ fontSize: "13px" }}>Notifikasi Jadwal Ujian ({notifications.length})</strong>
+                      <button
+                        onClick={() => setNotifOpen(false)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          color: "#64748b",
+                        }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>Belum ada jadwal ujian terdaftar.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            style={{
+                              padding: "8px 10px",
+                              background: "#f8fafc",
+                              borderRadius: "8px",
+                              borderLeft: "3px solid #3d6373",
+                              fontSize: "12px",
+                            }}
+                          >
+                            <strong style={{ display: "block", color: "#1e293b" }}>{n.title}</strong>
+                            <span style={{ color: "#64748b" }}>{n.meta}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-        <aside className="info-strip" style={{ flexWrap: "wrap", gap: "12px" }}>
-          <span className="info-icon">
-            <Icon name="shield" size={20} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <strong>Lingkungan ujian aman &amp; Verifikasi Jaringan Kampus (TC-41)</strong>
-            <p>
-              IP Perangkat Saat Ini:{" "}
-              <code>{currentIp}</code> (
-              {isCampusIp(currentIp) ? "Jaringan Kampus UNKLAB - Diizinkan" : "Jaringan Luar Kampus - Ditolak jika IP Whitelist Aktif"})
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <select
-              aria-label="Simulasi IP Jaringan (TC-41)"
-              value={currentIp}
-              onChange={(e) => {
-                setCurrentIp(e.target.value);
-                setSimulatedIp(e.target.value);
-              }}
+                <div className="date-card">
+                  <Icon name="calendar" size={21} />
+                  <div>
+                    <span>Semester Ganjil</span>
+                    <strong>2026 / 2027</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* TC-43: Banner Notifikasi Jadwal Ujian Baru */}
+            {notifications.length > 0 && (
+              <div
+                style={{
+                  background: "#f0f9ff",
+                  border: "1px solid #bae6fd",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                  fontSize: "13px",
+                  color: "#0c4a6e",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <Icon name="bell" size={18} />
+                  <span>
+                    <strong>Notifikasi Jadwal Ujian Baru (TC-43):</strong> Anda terdaftar pada{" "}
+                    <b>{notifications.length} jadwal ujian</b>. Pastikan perangkat siap sebelum ujian dimulai.
+                  </span>
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 600 }}>Status: Terdaftar</span>
+              </div>
+            )}
+
+            {/* Filter Tab Status Ujian */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "18px" }}>
+              {(["Semua Ujian", "Tersedia / Aktif", "Akan Datang", "Selesai / Terkunci"] as const).map((tab) => {
+                const isActive = examFilterTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setExamFilterTab(tab)}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "999px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      border: isActive ? "1px solid #355866" : "1px solid #cbd5e1",
+                      background: isActive ? "#355866" : "#ffffff",
+                      color: isActive ? "#ffffff" : "#475569",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Grid Kartu Jadwal Ujian (TC-06, TC-07, TC-08, TC-33, TC-50) */}
+            <section style={{ marginBottom: "24px" }}>
+              <div className="section-heading" style={{ marginBottom: "14px" }}>
+                <div>
+                  <h2>Daftar Jadwal Ujian</h2>
+                  <p>
+                    Pastikan perangkat dan koneksi internetmu siap. (PIN tidak pernah diekspos di UI/API - TC-50)
+                  </p>
+                </div>
+                <span className="exam-count">{filteredExams.length} ujian</span>
+              </div>
+
+              {filteredExams.length === 0 ? (
+                <div
+                  style={{
+                    background: "#ffffff",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "14px",
+                    padding: "36px 20px",
+                    textAlign: "center",
+                    color: "#64748b",
+                    fontSize: "13px",
+                  }}
+                >
+                  Tidak ada jadwal ujian pada kategori <strong>{examFilterTab}</strong>.
+                </div>
+              ) : (
+                <div
+                  className="exam-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                    gap: "18px",
+                  }}
+                >
+                  {filteredExams.map((exam, index) => {
+                    const statusLabel = getExamStatusLabel(exam);
+                    const isAvailable = statusLabel === "Tersedia" || statusLabel === "Sedang Berlangsung";
+                    const mhsSession = (dbState.sessions || []).find(
+                      (s: any) => s.id_ujian === exam.id_ujian && s.nim === student.nim
+                    );
+                    const isAlreadySubmitted =
+                      mhsSession &&
+                      [
+                        "Terkirim",
+                        "Selesai",
+                        "Disubmit Otomatis",
+                        "Sesi Dikunci Paksa",
+                        "Dikunci Paksa",
+                        "Diskualifikasi",
+                      ].includes(mhsSession.status_ujian);
+
+                    return (
+                      <article className={`exam-card ${isAvailable ? "available" : ""}`} key={exam.id_ujian}>
+                        <div className="card-topline">
+                          <span className={`status ${isAvailable ? "status-live" : ""}`}>
+                            {isAvailable && <i />}
+                            {statusLabel}
+                          </span>
+                          <button
+                            aria-label="Menu ujian"
+                            onClick={() => {
+                              if (isAlreadySubmitted) {
+                                setReceiptSession(mhsSession);
+                              } else {
+                                setPinExam(exam);
+                                setPin("");
+                                setPinError("");
+                                setMultiDeviceBlocked(false);
+                              }
+                            }}
+                          >
+                            <Icon name="dots" />
+                          </button>
+                        </div>
+                        <div className="subject-icon">
+                          <Icon name="exam" size={22} />
+                        </div>
+                        <p className="course-code">{exam.kode_mk || `UJN-0${index + 1}`}</p>
+                        <h3>{exam.nama_ujian}</h3>
+                        <div className="exam-meta">
+                          <span>
+                            <Icon name="calendar" size={17} />
+                            Mulai: {exam.tanggal_waktu_mulai}
+                          </span>
+                          <span>
+                            <Icon name="clock" size={17} />
+                            Selesai: {exam.tanggal_waktu_selesai} · {exam.durasi} menit
+                          </span>
+                        </div>
+
+                        {isAlreadySubmitted ? (
+                          <button
+                            className="button secondary exam-button"
+                            onClick={() => setReceiptSession(mhsSession)}
+                          >
+                            Lihat Resi Pengiriman (TC-25) <Icon name="file" size={16} />
+                          </button>
+                        ) : (
+                          <button
+                            className={`button exam-button ${isAvailable ? "primary" : "secondary"}`}
+                            onClick={() => {
+                              setPinExam(exam);
+                              setPin("");
+                              setPinError("");
+                              setMultiDeviceBlocked(false);
+                            }}
+                          >
+                            {statusLabel === "Sedang Berlangsung"
+                              ? "Lanjutkan Sesi Ujian"
+                              : isAvailable
+                                ? "Masuk Ujian (Input PIN)"
+                                : `Cek Akses (${statusLabel})`}
+                            <Icon name="arrow" size={17} />
+                          </button>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Info Strip Lingkungan Ujian Aman & Verifikasi Jaringan Kampus (TC-41) */}
+            <aside className="info-strip" style={{ flexWrap: "wrap", gap: "12px" }}>
+              <span className="info-icon">
+                <Icon name="shield" size={20} />
+              </span>
+              <div style={{ flex: 1 }}>
+                <strong>Lingkungan ujian aman &amp; Verifikasi Jaringan Kampus (TC-41)</strong>
+                <p>
+                  IP Perangkat Saat Ini: <code>{currentIp}</code> (
+                  {isCampusIp(currentIp)
+                    ? "Jaringan Kampus UNKLAB - Diizinkan"
+                    : "Jaringan Luar Kampus - Ditolak jika IP Whitelist Aktif"}
+                  )
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <select
+                  aria-label="Simulasi IP Jaringan (TC-41)"
+                  value={currentIp}
+                  onChange={(e) => {
+                    setCurrentIp(e.target.value);
+                    setSimulatedIp(e.target.value);
+                  }}
+                  style={{
+                    padding: "7px 10px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "12px",
+                    background: "#fff",
+                  }}
+                >
+                  <option value="192.168.1.50">IP Kampus (192.168.1.50)</option>
+                  <option value="203.0.113.99">IP Luar Kampus (203.0.113.99)</option>
+                </select>
+                <button onClick={() => setRulesOpen(true)}>Pelajari aturan</button>
+              </div>
+            </aside>
+          </>
+        ) : (
+          /* MENU 2: LIHAT NILAI (TC-25, TC-27, TC-28, TC-36, TC-39, TC-40) */
+          <>
+            <div className="lecturer-top">
+              <div>
+                <p className="section-kicker">RINGKASAN AKADEMIK · PORTAL MAHASISWA</p>
+                <h1>Lihat Nilai &amp; Hasil Ujian</h1>
+                <p>
+                  Pantau status penilaian esai, rincian skor, penalti pelanggaran, dan resi resmi pengiriman ujian Anda.
+                </p>
+              </div>
+              <div className="date-card">
+                <Icon name="award" size={21} />
+                <div>
+                  <span>Nilai Terpublikasi</span>
+                  <strong>{publishedGradedSessions.length} Ujian</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Kartu Ringkasan Statistik Mahasiswa */}
+            <section
               style={{
-                padding: "7px 10px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "12px",
-                background: "#fff",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "12px",
+                marginBottom: "22px",
               }}
             >
-              <option value="192.168.1.50">IP Kampus (192.168.1.50)</option>
-              <option value="203.0.113.99">IP Luar Kampus (203.0.113.99)</option>
-            </select>
-            <button onClick={() => setRulesOpen(true)}>Pelajari aturan</button>
-          </div>
-        </aside>
+              <article
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Total Ujian Diikuti</p>
+                <strong style={{ fontSize: "24px", color: "#0f172a", display: "block", marginTop: "6px" }}>
+                  {studentSessions.length}
+                </strong>
+                <small style={{ color: "#94a3b8", fontSize: "11px" }}>Sesi tercatat pada akun</small>
+              </article>
 
-        {/* TC-27 & TC-28: Tampilan Hasil Ujian */}
-        <section className="result-preview">
-          <div>
-            <span className="subject-icon">
-              <Icon name="file" size={21} />
-            </span>
-            <div>
-              <p className="section-kicker">
-                {isPublished && finalScoreDisplay !== "Belum dinilai" ? "HASIL DIPUBLIKASIKAN (TC-28)" : "STATUS PENILAIAN (TC-27)"}
-              </p>
-              <h3>{mainExam?.nama_ujian || "UTS Sistem Analisis & Desain"}</h3>
-              <p>
-                {isPublished && finalScoreDisplay !== "Belum dinilai"
-                  ? `Hasil telah dinilai dan dipublikasikan oleh Dosen${latestSession?.status_keputusan && latestSession.status_keputusan !== "Tidak Ada" ? ` · Keputusan: ${latestSession.status_keputusan}` : ""}`
-                  : hasUngradedEssay
-                    ? "Menunggu penilaian soal esai & publikasi hasil oleh Dosen (Status: Belum dinilai)"
-                    : "Nilai telah dihitung namun belum dipublikasikan oleh Dosen (Status: Belum dinilai)"}
-              </p>
+              <article
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: "12px", color: "#166534", fontWeight: 600 }}>
+                  Sudah Dipublikasikan (TC-27)
+                </p>
+                <strong style={{ fontSize: "24px", color: "#16a34a", display: "block", marginTop: "6px" }}>
+                  {publishedGradedSessions.length}
+                </strong>
+                <small style={{ color: "#94a3b8", fontSize: "11px" }}>Nilai resmi tersedia</small>
+              </article>
+
+              <article
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: "12px", color: "#b45309", fontWeight: 600 }}>
+                  Menunggu Penilaian / Publikasi (TC-28)
+                </p>
+                <strong style={{ fontSize: "24px", color: "#d97706", display: "block", marginTop: "6px" }}>
+                  {pendingOrUnpublishedCount}
+                </strong>
+                <small style={{ color: "#94a3b8", fontSize: "11px" }}>Belum dinilai atau masih draft</small>
+              </article>
+
+              <article
+                style={{
+                  background: "#f0f9ff",
+                  border: "1px solid #bae6fd",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: "12px", color: "#0369a1", fontWeight: 600 }}>Rata-rata Nilai Akhir</p>
+                <strong style={{ fontSize: "24px", color: "#0c4a6e", display: "block", marginTop: "6px" }}>
+                  {avgPublishedScore}{" "}
+                  <span style={{ fontSize: "13px", fontWeight: 500, color: "#0369a1" }}>/ 100</span>
+                </strong>
+                <small style={{ color: "#0369a1", fontSize: "11px" }}>Khusus ujian dipublikasikan</small>
+              </article>
+            </section>
+
+            {/* Daftar Kartu Hasil Ujian Mahasiswa */}
+            <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {studentSessions.length === 0 ? (
+                <div
+                  style={{
+                    background: "#ffffff",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "14px",
+                    padding: "40px 20px",
+                    textAlign: "center",
+                    color: "#64748b",
+                  }}
+                >
+                  <Icon name="award" size={32} />
+                  <h3 style={{ margin: "12px 0 6px", color: "#334155" }}>Belum Ada Hasil Ujian</h3>
+                  <p style={{ margin: 0, fontSize: "13px" }}>
+                    Anda belum mengumpulkan ujian apa pun. Silakan buka menu <strong>Ikut Ujian</strong> untuk memulai.
+                  </p>
+                </div>
+              ) : (
+                studentSessions.map((session: any, idx: number) => {
+                  const examObj = examsList.find((e) => e.id_ujian === session.id_ujian) || mainExam;
+                  const sHasUngraded = Boolean(session.has_ungraded_essay);
+                  const sIsPublished = Boolean(examObj?.hasil_dipublikasikan);
+                  const canShowScore =
+                    sIsPublished &&
+                    !sHasUngraded &&
+                    session.total_nilai !== null &&
+                    session.total_nilai !== undefined;
+
+                  const numericScore = Number(session.total_nilai ?? 0);
+                  const gradeLetter = getGradeLetter(numericScore);
+
+                  return (
+                    <article
+                      key={session.id_sesi || idx}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "14px",
+                        padding: "18px 20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "14px",
+                        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+                      }}
+                    >
+                      {/* Top Row: Identitas Ujian & Status Badge */}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: "12px",
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", letterSpacing: "0.05em" }}>
+                            {session.kode_mk || examObj?.kode_mk || "IF-241"} · ID SESI: {session.id_sesi}
+                          </span>
+                          <h3 style={{ margin: "4px 0", fontSize: "17px", color: "#0f172a" }}>
+                            {session.nama_ujian || examObj?.nama_ujian}
+                          </h3>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "12px", color: "#64748b" }}>
+                            <span>Waktu Kirim: {session.waktu_pengiriman || "-"}</span>
+                            <span>·</span>
+                            <span>
+                              Status Sesi:{" "}
+                              <strong
+                                style={{
+                                  color:
+                                    session.status_ujian === "Terkirim" || session.status_ujian === "Disubmit Otomatis"
+                                      ? "#1d4ed8"
+                                      : "#dc2626",
+                                }}
+                              >
+                                {session.status_ujian}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          {sHasUngraded ? (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "5px 12px",
+                                borderRadius: "999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "#fef3c7",
+                                color: "#92400e",
+                                border: "1px solid #fde68a",
+                              }}
+                            >
+                              Belum dinilai (TC-28)
+                            </span>
+                          ) : !sIsPublished ? (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "5px 12px",
+                                borderRadius: "999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "#f1f5f9",
+                                color: "#475569",
+                                border: "1px solid #cbd5e1",
+                              }}
+                            >
+                              Menunggu Publikasi Dosen (TC-27)
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "5px 12px",
+                                borderRadius: "999px",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                background: "#ecfdf5",
+                                color: "#047857",
+                                border: "1px solid #a7f3d0",
+                              }}
+                            >
+                              Dipublikasikan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Rincian Skor (Hanya Tampil Jika Sudah Dipublikasikan - TC-27 & TC-28) */}
+                      {canShowScore ? (
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                            gap: "10px",
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "10px",
+                            padding: "12px 14px",
+                          }}
+                        >
+                          <div>
+                            <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
+                              Skor Objektif (TC-39)
+                            </span>
+                            <strong style={{ fontSize: "15px", color: "#0f172a" }}>
+                              {session.objective_earned ?? 0} / {session.objective_bobot ?? 70}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
+                              Skor Esai (TC-40)
+                            </span>
+                            <strong style={{ fontSize: "15px", color: "#0f172a" }}>
+                              {session.essay_earned ?? 0} / {session.essay_bobot ?? 30}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
+                              Penalti Pelanggaran (TC-36)
+                            </span>
+                            <strong
+                              style={{
+                                fontSize: "15px",
+                                color:
+                                  session.status_keputusan === "Pengurangan Nilai" ||
+                                  session.status_keputusan === "Diskualifikasi"
+                                    ? "#dc2626"
+                                    : "#475569",
+                              }}
+                            >
+                              {session.status_keputusan === "Pengurangan Nilai"
+                                ? "-20 Poin"
+                                : session.status_keputusan === "Diskualifikasi"
+                                  ? "Diskualifikasi (0)"
+                                  : "0 Poin"}
+                            </strong>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                            <div>
+                              <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>
+                                Total Nilai Akhir
+                              </span>
+                              <strong style={{ fontSize: "20px", color: "#0f172a" }}>
+                                {session.total_nilai} <small style={{ fontSize: "12px", color: "#64748b" }}>/ 100</small>
+                              </strong>
+                            </div>
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "8px",
+                                background: "#0f172a",
+                                color: "#ffffff",
+                                fontSize: "14px",
+                                fontWeight: 800,
+                              }}
+                            >
+                              {gradeLetter}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            background: "#f8fafc",
+                            border: "1px dashed #cbd5e1",
+                            borderRadius: "10px",
+                            padding: "12px 14px",
+                            fontSize: "12px",
+                            color: "#475569",
+                          }}
+                        >
+                          {sHasUngraded
+                            ? "Nilai akhir belum dapat ditampilkan karena masih terdapat soal esai yang sedang dikoreksi oleh dosen (Status: Belum dinilai - TC-28)."
+                            : "Penilaian telah selesai, namun hasil ujian belum dipublikasikan oleh dosen pengampu (Status: Menunggu Publikasi Dosen - TC-27)."}
+                        </div>
+                      )}
+
+                      {/* Bottom Row: Tombol Aksi */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => setReceiptSession(session)}
+                          style={{ fontSize: "12px", padding: "8px 14px" }}
+                        >
+                          <Icon name="file" size={15} /> Lihat Resi Ujian (TC-25)
+                        </button>
+                        {canShowScore && (
+                          <button
+                            type="button"
+                            className="button primary"
+                            onClick={() => {
+                              setSelectedResultSession(session);
+                              setResultOpen(true);
+                            }}
+                            style={{ fontSize: "12px", padding: "8px 14px" }}
+                          >
+                            <Icon name="award" size={15} /> Rincian Nilai
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </section>
+          </>
+        )}
+      </main>
+
+      {/* Modal Resi Ujian Resmi (TC-25) */}
+      {receiptSession && (
+        <Modal labelledBy="receipt-title" onClose={() => setReceiptSession(null)}>
+          <div className="pin-icon">
+            <Icon name="check" size={24} />
+          </div>
+          <p className="modal-kicker centered">RESI BUKTI PENGIRIMAN UJIAN (TC-25)</p>
+          <h2 className="centered" id="receipt-title">
+            Jawaban Berhasil Dikumpulkan
+          </h2>
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              fontSize: "13px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              margin: "14px 0 18px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>Nama Mahasiswa</span>
+              <strong style={{ color: "#0f172a", textAlign: "right" }}>
+                {receiptSession.nama_mahasiswa || student.fullName}
+              </strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>NIM</span>
+              <strong style={{ color: "#0f172a" }}>{receiptSession.nim || student.nim}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>Nama Ujian</span>
+              <strong style={{ color: "#0f172a", textAlign: "right" }}>
+                {receiptSession.nama_ujian || mainExam?.nama_ujian}
+              </strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>ID Sesi</span>
+              <strong style={{ color: "#0f172a" }}>{receiptSession.id_sesi}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>Waktu Kirim</span>
+              <strong style={{ color: "#0f172a" }}>{receiptSession.waktu_pengiriman || "-"}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <span style={{ color: "#64748b" }}>Status Pengiriman</span>
+              <strong style={{ color: "#16a34a" }}>{receiptSession.status_ujian}</strong>
             </div>
           </div>
-          <div className="result-score">
-            <span>Nilai akhir</span>
-            <strong style={{ fontSize: finalScoreDisplay === "Belum dinilai" ? "18px" : undefined }}>
-              {finalScoreDisplay}
-            </strong>
-          </div>
-          <button className="button secondary" onClick={() => setResultOpen(true)}>
-            Lihat Detail Hasil
+          <button className="button primary wide" onClick={() => setReceiptSession(null)}>
+            Tutup Resi
           </button>
-        </section>
-      </main>
+        </Modal>
+      )}
 
       {pinExam && (
         <Modal labelledBy="pin-title" onClose={() => setPinExam(null)}>
@@ -952,7 +1546,7 @@ function StudentDashboard({
             {isPublished && finalScoreDisplay !== "Belum dinilai" ? "HASIL DIPUBLIKASIKAN" : "BELUM DIPUBLIKASIKAN"}
           </p>
           <h2 className="centered" id="result-title">
-            {mainExam?.nama_ujian || "UTS Sistem Analisis & Desain"}
+            {activeDetailSession?.nama_ujian || currentStudentExam?.nama_ujian || "UTS Sistem Analisis & Desain"}
           </h2>
           <div className="result-detail">
             <strong style={{ fontSize: finalScoreDisplay === "Belum dinilai" ? "26px" : undefined }}>
@@ -963,14 +1557,14 @@ function StudentDashboard({
               {isPublished && finalScoreDisplay !== "Belum dinilai" ? (
                 <>
                   <p>
-                    Skor Objektif <b>{latestSession?.objective_earned ?? 50} / {latestSession?.objective_bobot ?? 70}</b>
+                    Skor Objektif <b>{activeDetailSession?.objective_earned ?? 50} / {activeDetailSession?.objective_bobot ?? 70}</b>
                   </p>
                   <p>
-                    Penilaian Esai <b>{latestSession?.essay_earned ?? 24} / {latestSession?.essay_bobot ?? 30}</b>
+                    Penilaian Esai <b>{activeDetailSession?.essay_earned ?? 24} / {activeDetailSession?.essay_bobot ?? 30}</b>
                   </p>
-                  {latestSession?.status_keputusan && latestSession.status_keputusan !== "Tidak Ada" && (
+                  {activeDetailSession?.status_keputusan && activeDetailSession.status_keputusan !== "Tidak Ada" && (
                     <p>
-                      Keputusan Pengawas <b>{latestSession.status_keputusan}</b>
+                      Keputusan Pengawas <b>{activeDetailSession.status_keputusan}</b>
                     </p>
                   )}
                 </>
