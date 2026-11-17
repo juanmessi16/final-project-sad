@@ -647,9 +647,9 @@ const Login = ({ onLoginSuccess }) => {
                 <strong>Login with UNKLAB Email:</strong> Klik tombol Google untuk memilih akun mahasiswa atau dosen UNKLAB.
               </li>
               <li>
-                <strong>NIM / Username:</strong>
+                <strong>NIM / NIP / Username:</strong>
                 <div>Mahasiswa: NIM <code>105022410021</code> (Password: <code>123</code>)</div>
-                <div>Dosen: Username <code>dosen</code> (Password: <code>dosen123</code>)</div>
+                <div>Dosen: NIP / Username <code>dosen</code> (Password: <code>dosen123</code>)</div>
               </li>
             </ol>
             <button

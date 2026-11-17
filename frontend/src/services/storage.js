@@ -103,9 +103,9 @@ const INITIAL_DATA = {
       id_dosen: 'DOS_01',
       nama_ujian: 'UTS Sistem Analisis & Desain (SAD)',
       tanggal_waktu_mulai: '2026-10-20 08:00:00',
-      tanggal_waktu_selesai: '2026-11-10 23:59:00',
-      durasi: 60, // menit
-      pin_ujian: '123456',
+      tanggal_waktu_selesai: '2027-12-31 23:59:00',
+      durasi: 90, // menit
+      pin_ujian: '483920',
       batas_toleransi_pelanggaran: 3
     }
   ],
