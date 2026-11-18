@@ -18,16 +18,16 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 
 | No | Nama | NIM | Peran | Kontribusi utama |
 |----|------|-----|-------|------------------|
-| 1 | Tulengkey, Juan Messi Septhian | 105022410021 | Project manager & Lead developer | Rencana kerja, arsitektur sistem, repository, integrasi backend & alur ujian (UC-01 s.d. UC-05) |
+| 1 | Tulengkey, Juan Messi Septhian | 105022410021 | Project manager & Lead developer | Rencana kerja, arsitektur sistem, repository, integrasi backend & frontend |
 | 2 | Sumual, Valentino | 105022410095 | System analyst & UI/UX designer | Elisitasi kebutuhan, penyusunan SRS, spesifikasi anti-curang, desain UI web |
 | 3 | Tuwaidan, Jeniffer Diana | 105022510107 | System designer & Frontend developer | Use Case diagram, Activity & Sequence diagram, integrasi antarmuka React & inline form cards |
 | 4 | Sahetapy, Wilman Valentino | 105022410007 | Backend developer | Perancangan database MySQL, REST API Express, session lock terpusat, & trigger proteksi log |
-| 5 | Laluyan, Matthew Arnold M | 105022510475 | QA dan dokumentasi | Pembuatan 53 skenario kasus uji (TC-01 s.d. TC-53), pengujian integrasi alur kerja, & README |
+| 5 | Laluyan, Matthew Arnold M | 105022510475 | QA dan dokumentasi | Pembuatan 40 skenario kasus uji (TC-01 s.d. TC-53), pengujian integrasi alur kerja, & README |
 
 ## Latar Belakang
 
 - **Masalah:** Pelaksanaan ujian daring sering rentan terhadap kecurangan (berpindah tab browser, menyalin teks soal ke mesin pencari/AI, atau berbagi akun pada dua perangkat sekaligus), sementara penggunaan kamera pengawas memicu kendala privasi dan bandwidth mahasiswa.
-- **Kondisi saat ini:** LMS atau formulir ujian konvensional umumnya belum memiliki proteksi aktif terhadap perpindahan tab, penguncian layar penuh (*fullscreen*), pembatasan IP jaringan kampus, *single-device lock*, maupun sinkronisasi status real-time antar perangkat.
+- **Kondisi saat ini:** LMS atau formulir ujian konvensional umumnya belum memiliki proteksi aktif terhadap perpindahan tab, penguncian layar penuh (*fullscreen*),  *single-device lock*, maupun sinkronisasi status real-time antar perangkat.
 - **Tujuan sistem:** Membangun platform ujian web terpadu dengan deteksi kecurangan berbasis event browser (*Fullscreen API*, *Page Visibility API*, *window blur*, pemblokiran *clipboard*), pengacakan soal & opsi jawaban, *auto-save* berkala, log pelanggaran *append-only* (*immutable*), serta sinkronisasi state terpusat di Backend Server (*Single Source of Truth*).
 - **Pengguna (aktor):**
   - **Mahasiswa:** Mengikuti ujian dengan verifikasi PIN 6 digit, mengerjakan soal pada layar penuh anti-curang, memulihkan sesi apabila terputus, melihat resi pengiriman, dan memantau nilai setelah dipublikasikan.
@@ -107,7 +107,7 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 | Front-end | React, TypeScript, Vite, Lucide React | React 19, Vite 8 |
 | Back-end | Node.js, Express.js, Helmet, CORS, bcryptjs, JWT | Node 20+, Express 4.19+ |
 | Database | MySQL 8.0 (InnoDB, `utf8mb4`) + JSON/In-Memory Sync Store Fallback | MySQL 8.0 |
-| Tools pemodelan | Draw.io, StarUML, PlantUML | — |
+| Tools pemodelan | Draw.io, StarUML, Mermaid Live Editor | — |
 | Prototipe UI | Figma | — |
 
 ## Kebutuhan Sistem
@@ -160,19 +160,32 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
    npm run build
    ```
 
-5. Buka `http://localhost:5173` di browser.
+5. Download XAMPP Control Panel
+
+   ```bash
+   Run Apache dan MySQL
+   ```
+
+   Untuk build produksi frontend:
+
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+6. Buka `http://localhost:5173` di browser.
 
 ### Akun uji
 
 | Aktor | Username / NIM / NIP | Password | Keterangan |
 |-------|----------------------|----------|------------|
 | **Dosen** | `george` / `198501012010011001` | `123` | George M. W. Tangka, S.Kom., MBA (Portal Dosen) |
-| **Mahasiswa 1** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian *(Data uji esai belum dinilai)* |
-| **Mahasiswa 2** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana *(Data uji esai sudah dinilai)* |
-| **Mahasiswa 3** | `105022410095` | `123` | Sumual, Valentino *(Data uji sanksi -20 poin)* |
+| **Mahasiswa 1** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian |
+| **Mahasiswa 2** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana |
+| **Mahasiswa 3** | `105022410095` | `123` | Sumual, Valentino |
 | **Mahasiswa 4** | `105022410007` | `123` | Sahetapy, Wilman Valentino |
 | **Mahasiswa 5** | `105022510475` | `123` | Laluyan, Matthew Arnold M |
-| **Akun Terkunci** | `terkunci` | `123` | Akun uji status `Terkunci` (TC-04) |
+| **Akun Terkunci** | `terkunci` | `123` | Akun uji status `Terkunci` |
 
 > **PIN Ujian Default:** `483920` (6 digit)
 
@@ -228,7 +241,7 @@ Ringkasan rancangan; detail lengkap ada di dokumen SRS.
 
 ## Pengujian
 
-Ringkasan: **53 kasus uji (TC-01 s.d. TC-53), seluruh skenario inti terverifikasi pada alur Backend & Frontend**.
+Ringkasan: **40 kasus uji (TC-01 s.d. TC-40), seluruh skenario inti terverifikasi pada alur Backend & Frontend**.
 
 | ID | Use case | Skenario | Hasil diharapkan | Status |
 |----|----------|----------|------------------|--------|
@@ -241,21 +254,20 @@ Ringkasan: **53 kasus uji (TC-01 s.d. TC-53), seluruh skenario inti terverifikas
 | TC-27 & TC-28 | UC-05 / UC-10 | Dosen menonaktifkan/mengaktifkan publikasi hasil ujian | Mahasiswa melihat `"Belum dinilai"` vs nilai akhir | Lulus |
 | TC-29 & TC-30 | UC-06 | Tambah/edit soal objektif tanpa kunci jawaban | Validasi menolak simpan hingga kunci jawaban diisi | Lulus |
 | TC-32 | UC-07 | Simpan ujian dengan durasi `<= 0` menit | Validasi menolak dengan pesan error TC-32 | Lulus |
-| TC-34 & TC-42 | UC-08 | Akses ujian oleh non-peserta & tambah waktu `+5m` real-time | Non-peserta ditolak; peserta mendapat `+5 menit` | Lulus |
+| TC-34 | UC-08 | Akses ujian oleh non-peserta & tambah waktu `+5m` real-time | Non-peserta ditolak; peserta mendapat `+5 menit` | Lulus |
 | TC-40 | UC-09 | Input nilai esai (`0–100`) & akumulasi nilai akhir | Nilai akhir terhitung & status menjadi `"Selesai Dinilai"` | Lulus |
-| TC-52 | UC-09 | Upaya ubah/hapus `log_pelanggaran` | Ditolak trigger SQL & HTTP `403` (*immutable*) | Lulus |
+
 
 ## Keterbatasan dan Pengembangan Berikutnya
 
 - Jika server MySQL lokal tidak diaktifkan, backend berjalan menggunakan penyimpanan fallback JSON (`backend/data/session_sync_store.json`) untuk menjaga sinkronisasi lintas browser tetap aktif.
-- Simulasi pembatasan IP jaringan kampus (`TC-41`) mendukung header uji `X-Simulated-IP` untuk keperluan demonstrasi di luar jaringan fisik kampus.
 - Pengembangan berikutnya: integrasi SSO Universitas Klabat, ekspor rekap nilai ke format `.xlsx`/`.pdf`, dan notifikasi *push* berbasis WebSocket.
 
 ## Penggunaan AI dan Referensi
 
 | Alat AI | Dipakai untuk | Yang diperiksa atau diubah dari hasilnya |
 |---------|---------------|------------------------------------------|
-| Antigravity AI Assistant | Membantu implementasi sinkronisasi state terpusat, *single-device lock*, inline form cards, *alarm date-time picker*, dan perapihan dokumentasi | Memverifikasi seluruh endpoint API, logika deduplikasi ujian, hasil `vite build`, dan kesesuaian terhadap 53 kasus uji SRS |
+| Antigravity AI Assistant | Membantu implementasi sinkronisasi state terpusat, *single-device lock*, inline form cards, *alarm date-time picker*, dan perapihan dokumentasi | Memverifikasi seluruh endpoint API, logika deduplikasi ujian, hasil `vite build`, dan kesesuaian terhadap 40 kasus uji SRS |
 
 Referensi:
 
