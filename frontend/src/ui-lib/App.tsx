@@ -6,21 +6,28 @@ import {
   clearAuthToken,
   createExamApi,
   createQuestionApi,
+  deduplicateExams,
+  deleteExamApi,
   deleteQuestionApi,
   ExamItem,
-   getOfflineQueue,
+  fetchStateFromBackend,
+  getOfflineQueue,
   getSimulatedIp,
   gradeEssayAndRecalculate,
   isCampusIp,
   isTokenExpired,
   loadLocalDB,
   loginApi,
+  logoutApi,
   ParticipantItem,
   QuestionItem,
   recordViolationApi,
+  resetUserDeviceSessionApi,
   saveLocalDB,
+  sendAuthHeartbeatApi,
   setSimulatedIp,
   submitExamSessionApi,
+  syncExamsFromBackend,
   togglePublishExamResultApi,
   updateExamSettingsApi,
   updateQuestionApi,
@@ -453,6 +460,202 @@ function LoginModal({
   );
 }
 
+function getDynamicTimeGreeting(date = new Date()): string {
+  const hour = date.getHours();
+  const minutes = date.getMinutes();
+
+  if (hour >= 4 && hour < 11) {
+    return "Selamat pagi";
+  }
+  if (hour >= 11 && hour < 15) {
+    return "Selamat siang";
+  }
+  if (hour >= 15 && (hour < 18 || (hour === 18 && minutes < 30))) {
+    return "Selamat sore";
+  }
+  return "Selamat malam";
+}
+
+function formatLocalDateTime(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function parseDateTimeParts(value: string): { date: string; hour: string; minute: string } {
+  const clean = String(value || "").trim().replace("T", " ");
+  const match = clean.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{1,2})/);
+  if (match) {
+    return {
+      date: match[1],
+      hour: String(Math.min(23, Math.max(0, Number(match[2])))).padStart(2, "0"),
+      minute: String(Math.min(59, Math.max(0, Number(match[3])))).padStart(2, "0"),
+    };
+  }
+  const now = new Date();
+  const fallback = formatLocalDateTime(now);
+  const [d, t] = fallback.split(" ");
+  const [h, m] = t.split(":");
+  return { date: d, hour: h, minute: m };
+}
+
+function AlarmDateTimePicker({
+  label,
+  value,
+  onChange,
+  presets,
+}: {
+  label: string;
+  value: string;
+  onChange: (nextVal: string) => void;
+  presets?: { label: string; getValue: () => string }[];
+}) {
+  const parts = parseDateTimeParts(value);
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+
+  const updateParts = (nextDate: string, nextHour: string, nextMinute: string) => {
+    const d = nextDate || parts.date;
+    const h = nextHour || parts.hour;
+    const m = nextMinute || parts.minute;
+    onChange(`${d} ${h}:${m}`);
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        padding: "12px 14px",
+        borderRadius: "10px",
+        border: "1.5px solid #cbd5e1",
+        background: "#f8fafc",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#1e293b" }}>{label}</span>
+        <span
+          style={{
+            fontSize: "11.5px",
+            fontWeight: 700,
+            color: "#2b5c6b",
+            background: "#e6f0f3",
+            padding: "2px 8px",
+            borderRadius: "999px",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {parts.date} · {parts.hour}:{parts.minute}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <input
+          type="date"
+          aria-label={`${label} - Tanggal`}
+          value={parts.date}
+          onChange={(e) => updateParts(e.target.value, parts.hour, parts.minute)}
+          style={{
+            flex: "1 1 150px",
+            height: "38px",
+            padding: "6px 10px",
+            borderRadius: "8px",
+            border: "1.5px solid #cbd5e1",
+            background: "#ffffff",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#0f172a",
+            fontFamily: "inherit",
+          }}
+        />
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "#ffffff",
+            border: "1.5px solid #2b5c6b",
+            borderRadius: "8px",
+            padding: "0 8px",
+            height: "38px",
+          }}
+        >
+          <Icon name="clock" size={15} />
+          <select
+            aria-label={`${label} - Jam`}
+            value={parts.hour}
+            onChange={(e) => updateParts(parts.date, e.target.value, parts.minute)}
+            style={{
+              border: "none",
+              background: "transparent",
+              fontSize: "14px",
+              fontWeight: 700,
+              color: "#0f172a",
+              fontVariantNumeric: "tabular-nums",
+              cursor: "pointer",
+              outline: "none",
+              padding: "2px",
+            }}
+          >
+            {hours.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+          <span style={{ fontWeight: 800, color: "#2b5c6b", fontSize: "15px" }}>:</span>
+          <select
+            aria-label={`${label} - Menit`}
+            value={parts.minute}
+            onChange={(e) => updateParts(parts.date, parts.hour, e.target.value)}
+            style={{
+              border: "none",
+              background: "transparent",
+              fontSize: "14px",
+              fontWeight: 700,
+              color: "#0f172a",
+              fontVariantNumeric: "tabular-nums",
+              cursor: "pointer",
+              outline: "none",
+              padding: "2px",
+            }}
+          >
+            {minutes.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {presets && presets.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {presets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => onChange(preset.getValue())}
+              style={{
+                padding: "4px 9px",
+                borderRadius: "6px",
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#334155",
+                fontSize: "11.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatStudentName(user: any): { fullName: string; shortName: string; nim: string; initials: string } {
   if (!user) {
     return {
@@ -532,10 +735,18 @@ function StudentDashboard({
 }) {
   const student = formatStudentName(currentUser);
   const [activeNav, setActiveNav] = useState<"Ikut Ujian" | "Lihat Nilai">("Ikut Ujian");
+  const [timeGreeting, setTimeGreeting] = useState(() => getDynamicTimeGreeting());
   const [examFilterTab, setExamFilterTab] = useState<
     "Semua Ujian" | "Tersedia / Aktif" | "Akan Datang" | "Selesai / Terkunci"
   >("Semua Ujian");
   const [dbState, setDbState] = useState(() => loadLocalDB());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTimeGreeting(getDynamicTimeGreeting());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [pinExam, setPinExam] = useState<ExamItem | null>(null);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
@@ -549,13 +760,49 @@ function StudentDashboard({
 
   const refreshState = () => {
     setDbState(loadLocalDB());
+    fetchStateFromBackend().then(() => {
+      setDbState(loadLocalDB());
+    });
   };
 
   useEffect(() => {
     refreshState();
   }, [activeNav]);
 
-  const examsList: ExamItem[] = dbState.exams || [];
+  // Sinkronisasi Real-Time Lintas Browser / Akun (Auto-polling setiap 3.5 detik & window.onfocus)
+  useEffect(() => {
+    const handleStateEvent = () => {
+      setDbState(loadLocalDB());
+    };
+    const handleFocus = () => {
+      fetchStateFromBackend();
+    };
+    window.addEventListener("xunklab_state_updated", handleStateEvent);
+    window.addEventListener("focus", handleFocus);
+    const pollTimer = window.setInterval(() => {
+      fetchStateFromBackend();
+    }, 3500);
+    return () => {
+      window.removeEventListener("xunklab_state_updated", handleStateEvent);
+      window.removeEventListener("focus", handleFocus);
+      window.clearInterval(pollTimer);
+    };
+  }, []);
+
+  // TC-05: Kirim heartbeat sesi login setiap 10 detik agar Backend tahu Perangkat 1 masih aktif
+  useEffect(() => {
+    sendAuthHeartbeatApi(student.nim);
+    const hbTimer = window.setInterval(() => {
+      sendAuthHeartbeatApi(student.nim);
+    }, 10000);
+    return () => window.clearInterval(hbTimer);
+  }, [student.nim]);
+
+  const examsList: ExamItem[] = deduplicateExams(
+    dbState.exams || [],
+    dbState.questions || [],
+    dbState.participants || []
+  ).exams;
   const mainExam = examsList[0];
 
   // Cari sesi hasil untuk mahasiswa ini (TC-25, TC-27, TC-28, TC-36, TC-39, TC-40)
@@ -606,15 +853,19 @@ function StudentDashboard({
     return "E";
   };
 
-  // Notifikasi Jadwal Ujian bagi Mahasiswa Terdaftar (TC-43)
-  const isStudentRegistered = (dbState.participants || []).some((p: ParticipantItem) => p.nim === student.nim);
-  const notifications = isStudentRegistered
-    ? examsList.map((e) => ({
-        id: e.id_ujian,
-        title: `Jadwal Ujian: ${e.nama_ujian}`,
-        meta: `${e.tanggal_waktu_mulai} · Durasi ${e.durasi} menit`,
-      }))
-    : [];
+  // Notifikasi Jadwal Ujian bagi Mahasiswa Terdaftar (TC-43 & TC-34)
+  // Hanya hitung ujian yang masih aktif di master exams Dosen DAN NIM mahasiswa terdaftar sebagai peserta
+  const registeredExamsForStudent = examsList.filter((e) => {
+    const examParticipants = (dbState.participants || []).filter(
+      (p: ParticipantItem) => (p.id_ujian || p.examId || "UJN_01") === e.id_ujian
+    );
+    return examParticipants.some((p: ParticipantItem) => p.nim === student.nim);
+  });
+  const notifications = registeredExamsForStudent.map((e) => ({
+    id: e.id_ujian,
+    title: `Jadwal Ujian: ${e.nama_ujian}`,
+    meta: `${e.tanggal_waktu_mulai} · Durasi ${e.durasi} menit`,
+  }));
 
   const handleVerifyPin = async (event: FormEvent, forceRecover = false) => {
     event.preventDefault();
@@ -759,8 +1010,8 @@ function StudentDashboard({
             <div className="lecturer-top" style={{ position: "relative" }}>
               <div>
                 <p className="section-kicker">FAKULTAS ILMU KOMPUTER · PORTAL MAHASISWA</p>
-                <h1>Ikut Ujian</h1>
-                <p>Selamat pagi, {student.shortName}. Berikut jadwal ujian yang telah disiapkan untukmu.</p>
+                <h1>{timeGreeting}, {student.shortName}.</h1>
+                <p>Berikut jadwal ujian yang telah disiapkan untukmu.</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", position: "relative" }}>
                 <button
@@ -1616,8 +1867,20 @@ const navItems = [
   ["shield", "Tinjau Log Pelanggaran"],
 ];
 
-function LecturerModule({ active }: { active: string }) {
+function LecturerModule({
+  active,
+  onNavigateBack,
+}: {
+  active: string;
+  onNavigateBack?: () => void;
+}) {
   const [dbState, setDbState] = useState(() => loadLocalDB());
+
+  useEffect(() => {
+    const onStateUpdated = () => setDbState(loadLocalDB());
+    window.addEventListener("xunklab_state_updated", onStateUpdated);
+    return () => window.removeEventListener("xunklab_state_updated", onStateUpdated);
+  }, []);
 
   // State CRUD Bank Soal (TC-29, TC-30, TC-37, TC-38)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
@@ -1634,19 +1897,30 @@ function LecturerModule({ active }: { active: string }) {
   const [filterType, setFilterType] = useState<string>("Semua Tipe");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // State Modal Buat Ujian Baru (Ketentuan 4)
+  // State Inline Form Buat Ujian Baru (Ketentuan 4 - TC-32)
+  const defaultNewStart = () => formatLocalDateTime(new Date());
+  const defaultNewEnd = () => formatLocalDateTime(new Date(Date.now() + 7 * 86400000));
   const [createExamModalOpen, setCreateExamModalOpen] = useState(false);
   const [newExamTitle, setNewExamTitle] = useState("");
   const [newExamCourse, setNewExamCourse] = useState("Sistem Analisis & Desain");
   const [newExamCode, setNewExamCode] = useState("IF-241");
   const [newExamDur, setNewExamDur] = useState("90");
   const [newExamPinVal, setNewExamPinVal] = useState("483920");
+  const [newExamStart, setNewExamStart] = useState(() => defaultNewStart());
+  const [newExamEnd, setNewExamEnd] = useState(() => defaultNewEnd());
   const [createExamError, setCreateExamError] = useState("");
+  const [isCreatingExam, setIsCreatingExam] = useState(false);
+  const [confirmDeleteExam, setConfirmDeleteExam] = useState(false);
 
   // State Pengaturan Ujian (TC-09, TC-10, TC-31..TC-33, TC-41)
+  const uniqueExams: ExamItem[] = deduplicateExams(
+    dbState.exams || [],
+    dbState.questions || [],
+    dbState.participants || []
+  ).exams;
   const [selectedExamId, setSelectedExamId] = useState("UJN_01");
   const currentExam: ExamItem =
-    (dbState.exams || []).find((e: ExamItem) => e.id_ujian === selectedExamId) || dbState.exams[0];
+    uniqueExams.find((e: ExamItem) => e.id_ujian === selectedExamId) || uniqueExams[0];
 
   const [examName, setExamName] = useState(currentExam?.nama_ujian || "");
   const [examStart, setExamStart] = useState(currentExam?.tanggal_waktu_mulai || "");
@@ -1665,6 +1939,9 @@ function LecturerModule({ active }: { active: string }) {
   const [newNim, setNewNim] = useState("");
   const [newStudentName, setNewStudentName] = useState("");
   const [participantMsg, setParticipantMsg] = useState("");
+  const [participantSearch, setParticipantSearch] = useState("");
+  const [participantSort, setParticipantSort] = useState<"nama-asc" | "nama-desc" | "nim-asc">("nama-asc");
+  const [confirmDeleteParticipant, setConfirmDeleteParticipant] = useState<{ nim: string; nama: string } | null>(null);
   const [gradingModalSession, setGradingModalSession] = useState<any | null>(null);
   const [essayInputScore, setEssayInputScore] = useState("80");
   const [gradeModalTab, setGradeModalTab] = useState<"essay" | "objective">("essay");
@@ -1700,6 +1977,10 @@ function LecturerModule({ active }: { active: string }) {
     setQWeight("15");
     setQError("");
     setQuestionModalOpen(true);
+    setTimeout(() => {
+      const el = document.getElementById("inline-question-form-card");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
   };
 
   const openEditQuestionModal = (q: QuestionItem) => {
@@ -1715,6 +1996,10 @@ function LecturerModule({ active }: { active: string }) {
     setQWeight(String(q.bobot || 10));
     setQError("");
     setQuestionModalOpen(true);
+    setTimeout(() => {
+      const el = document.getElementById("inline-question-form-card");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
   };
 
   const handleSaveQuestion = (event: FormEvent) => {
@@ -1746,6 +2031,10 @@ function LecturerModule({ active }: { active: string }) {
         return;
       }
       finalOptions = cleaned;
+      if (!cleaned.includes(qKey.trim())) {
+        setQError("Validasi Gagal (TC-30): Pilih salah satu opsi sebagai Kunci Jawaban menggunakan radio di sebelah kiri opsi.");
+        return;
+      }
     } else if (qType === "Benar/Salah") {
       finalOptions = ["Benar", "Salah"];
     }
@@ -1756,7 +2045,7 @@ function LecturerModule({ active }: { active: string }) {
         pertanyaan: qText.trim(),
         tipe_soal: qType,
         opsi_jawaban: finalOptions,
-        kunci_jawaban: qType === "Esai" ? null : qKey.trim(),
+        kunci_jawaban: qType === "Esai" ? qKey.trim() || null : qKey.trim(),
         bobot: weightNum,
         id_ujian: selectedExamId,
         examId: selectedExamId,
@@ -1780,7 +2069,7 @@ function LecturerModule({ active }: { active: string }) {
         pertanyaan: qText.trim(),
         tipe_soal: qType,
         opsi_jawaban: finalOptions,
-        kunci_jawaban: qType === "Esai" ? null : qKey.trim(),
+        kunci_jawaban: qType === "Esai" ? qKey.trim() || null : qKey.trim(),
         bobot: weightNum,
       };
       createQuestionApi(newQuestion);
@@ -1791,6 +2080,7 @@ function LecturerModule({ active }: { active: string }) {
     saveLocalDB(db);
     setDbState(db);
     setQuestionModalOpen(false);
+    setEditingQuestionId(null);
     setTimeout(() => setQSuccessMsg(""), 3500);
   };
 
@@ -1804,10 +2094,47 @@ function LecturerModule({ active }: { active: string }) {
     setTimeout(() => setQSuccessMsg(""), 3000);
   };
 
-  const handleCreateNewExam = (e: FormEvent) => {
-    e.preventDefault();
+  const openCreateExamForm = () => {
+    setNewExamTitle("");
+    setNewExamCourse("Sistem Analisis & Desain");
+    setNewExamCode("IF-241");
+    setNewExamDur("90");
+    setNewExamPinVal("483920");
+    setNewExamStart(defaultNewStart());
+    setNewExamEnd(defaultNewEnd());
     setCreateExamError("");
-    if (!newExamTitle.trim()) {
+    setCreateExamModalOpen(true);
+    setTimeout(() => {
+      const el = document.getElementById("inline-create-exam-card");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
+  };
+
+  const cancelCreateExamForm = () => {
+    setCreateExamModalOpen(false);
+    setNewExamTitle("");
+    setNewExamCourse("Sistem Analisis & Desain");
+    setNewExamCode("IF-241");
+    setNewExamDur("90");
+    setNewExamPinVal("483920");
+    setNewExamStart(defaultNewStart());
+    setNewExamEnd(defaultNewEnd());
+    setCreateExamError("");
+    if (active === "Atur Ujian" && onNavigateBack) {
+      onNavigateBack();
+    }
+  };
+
+  const handleCreateNewExam = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isCreatingExam) return;
+
+    setCreateExamError("");
+    const cleanTitle = newExamTitle.trim();
+    const cleanCourse = newExamCourse.trim() || "Sistem Analisis & Desain";
+    const cleanCode = newExamCode.trim() || "IF-241";
+
+    if (!cleanTitle) {
       setCreateExamError("Nama ujian wajib diisi.");
       return;
     }
@@ -1821,39 +2148,339 @@ function LecturerModule({ active }: { active: string }) {
       return;
     }
 
-    const createdId = `UJN_${Date.now().toString().slice(-4)}`;
-    const now = new Date();
-    const oneWeek = new Date(now.getTime() + 7 * 86400000);
-    const examPayload: ExamItem = {
-      id_ujian: createdId,
-      nama_ujian: newExamTitle.trim(),
-      mata_kuliah: newExamCourse.trim() || "Sistem Analisis & Desain",
-      kode_mk: newExamCode.trim() || "IF-241",
-      nama_dosen: "George M. W. Tangka, S.Kom., MBA",
-      tanggal_waktu_mulai: now.toISOString().slice(0, 16).replace("T", " "),
-      tanggal_waktu_selesai: oneWeek.toISOString().slice(0, 16).replace("T", " "),
-      durasi: durNum,
-      pin_ujian: newExamPinVal.trim(),
-      maks_percobaan: 1,
-      acak_aktif: true,
-      acak_opsi: true,
-      batasi_jaringan_kampus: false,
-      batas_toleransi_pelanggaran: 3,
-      hasil_dipublikasikan: false
+    setIsCreatingExam(true);
+    try {
+      const dbBefore = loadLocalDB();
+      const existingSame = (dbBefore.exams || []).find(
+        (ex: ExamItem) =>
+          (ex.nama_ujian || "").trim().toLowerCase() === cleanTitle.toLowerCase() &&
+          (ex.kode_mk || "IF-241").trim().toLowerCase() === cleanCode.toLowerCase()
+      );
+
+      const targetId = existingSame?.id_ujian || `UJN_${Date.now().toString().slice(-4)}`;
+      const examPayload: ExamItem = {
+        id_ujian: targetId,
+        nama_ujian: cleanTitle,
+        mata_kuliah: cleanCourse,
+        kode_mk: cleanCode,
+        nama_dosen: "George M. W. Tangka, S.Kom., MBA",
+        tanggal_waktu_mulai: newExamStart.trim() || defaultNewStart(),
+        tanggal_waktu_selesai: newExamEnd.trim() || defaultNewEnd(),
+        durasi: durNum,
+        pin_ujian: newExamPinVal.trim(),
+        maks_percobaan: existingSame?.maks_percobaan ?? 1,
+        acak_aktif: existingSame?.acak_aktif ?? true,
+        acak_opsi: existingSame?.acak_opsi ?? true,
+        batasi_jaringan_kampus: existingSame?.batasi_jaringan_kampus ?? false,
+        batas_toleransi_pelanggaran: existingSame?.batas_toleransi_pelanggaran ?? 3,
+        hasil_dipublikasikan: existingSame?.hasil_dipublikasikan ?? false,
+      };
+
+      const res = await createExamApi(examPayload);
+      const finalId = res?.exam?.id_ujian || targetId;
+
+      const db = loadLocalDB();
+      const baseParticipants = db.participants.filter(
+        (p: ParticipantItem) => (p.id_ujian || p.examId || "UJN_01") === "UJN_01"
+      );
+      baseParticipants.forEach((bp: ParticipantItem) => {
+        if (!db.participants.some((p: ParticipantItem) => p.nim === bp.nim && (p.id_ujian || p.examId) === finalId)) {
+          db.participants.push({
+            ...bp,
+            id_mahasiswa: `${bp.id_mahasiswa}_${finalId}`,
+            id_ujian: finalId,
+            examId: finalId,
+            tambahan_waktu: 0,
+          });
+        }
+      });
+      saveLocalDB(db);
+      setDbState(loadLocalDB());
+
+      // Otomatis pilih dan aktifkan ujian yang baru dibuat/diperbarui pada Bank Soal & Atur Ujian
+      setSelectedExamId(finalId);
+      setCreateExamModalOpen(false);
+      setNewExamTitle("");
+      const successText = existingSame
+        ? `Ujian "${examPayload.nama_ujian}" sudah ada sehingga datanya diperbarui tanpa duplikasi.`
+        : `Ujian baru "${examPayload.nama_ujian}" berhasil dibuat dan otomatis aktif.`;
+      setQSuccessMsg(successText);
+      setSettingsMsg({ type: "success", text: successText });
+      setTimeout(() => setQSuccessMsg(""), 4000);
+    } finally {
+      setIsCreatingExam(false);
+    }
+  };
+
+  const handleDeleteExam = async (idUjian: string, namaUjian?: string) => {
+    await deleteExamApi(idUjian);
+    const updatedDb = loadLocalDB();
+    setDbState(updatedDb);
+    setConfirmDeleteExam(false);
+    const remainingExams = deduplicateExams(
+      updatedDb.exams || [],
+      updatedDb.questions || [],
+      updatedDb.participants || []
+    ).exams;
+    if (remainingExams.length > 0) {
+      setSelectedExamId(remainingExams[0].id_ujian);
+    }
+    setSettingsMsg({
+      type: "success",
+      text: `Ujian "${namaUjian || idUjian}" berhasil dihapus dari sistem.`,
+    });
+  };
+
+  const handleResetExamSettings = () => {
+    const found = (dbState.exams || []).find((e: ExamItem) => e.id_ujian === selectedExamId) || currentExam;
+    if (found) {
+      setExamName(found.nama_ujian || "");
+      setExamStart(found.tanggal_waktu_mulai || "");
+      setExamEnd(found.tanggal_waktu_selesai || "");
+      setExamDuration(String(found.durasi ?? 90));
+      setExamPin(found.pin_ujian || "483920");
+      setExamAttempts(String(found.maks_percobaan ?? 1));
+      setExamTolerance(String(found.batas_toleransi_pelanggaran ?? 3));
+      setExamShuffleQuestions(Boolean(found.acak_aktif ?? true));
+      setExamShuffleOptions(Boolean(found.acak_opsi ?? true));
+      setExamCampusOnly(Boolean(found.batasi_jaringan_kampus ?? false));
+    }
+    setSettingsMsg(null);
+    setCreateExamModalOpen(false);
+    setCreateExamError("");
+    if (onNavigateBack) {
+      onNavigateBack();
+    }
+  };
+
+  const renderInlineCreateExamForm = () => {
+    if (!createExamModalOpen) return null;
+    const inputStyle = {
+      width: "100%",
+      height: "38px",
+      boxSizing: "border-box" as const,
+      padding: "8px 12px",
+      borderRadius: "8px",
+      border: "1.5px solid #cbd5e1",
+      fontSize: "13.5px",
+      color: "#0f172a",
+      background: "#f8fafc",
+      fontFamily: "inherit",
+    };
+    const labelStyle = {
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "5px",
+      fontSize: "12.5px",
+      fontWeight: 600,
+      color: "#334155",
     };
 
-    createExamApi(examPayload);
-    const db = loadLocalDB();
-    db.exams.push(examPayload);
-    saveLocalDB(db);
-    setDbState(db);
+    return (
+      <form
+        id="inline-create-exam-card"
+        onSubmit={handleCreateNewExam}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          background: "#ffffff",
+          border: "2px solid #2b5c6b",
+          borderTop: "6px solid #2b5c6b",
+          borderRadius: "12px",
+          padding: "20px 24px",
+          boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+          marginBottom: "18px",
+        }}
+      >
+        {/* Header Inline Card Buat Ujian Baru */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "10px",
+            paddingBottom: "12px",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <h3
+              id="modal-new-exam-title"
+              style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0f172a" }}
+            >
+              Buat Ujian Baru
+            </h3>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                color: "#2b5c6b",
+                background: "#e6f0f3",
+                padding: "3px 10px",
+                borderRadius: "999px",
+              }}
+            >
+              PENGELOLAAN UJIAN (TC-32)
+            </span>
+          </div>
+          <span style={{ fontSize: "12.5px", color: "#64748b" }}>
+            Jadwal ujian baru akan otomatis tersimpan dan aktif pada pilihan ujian.
+          </span>
+        </div>
 
-    // Otomatis pilih dan aktifkan ujian yang baru dibuat pada Bank Soal
-    setSelectedExamId(createdId);
-    setCreateExamModalOpen(false);
-    setNewExamTitle("");
-    setQSuccessMsg(`Ujian baru "${examPayload.nama_ujian}" berhasil dibuat dan otomatis aktif di Bank Soal.`);
-    setTimeout(() => setQSuccessMsg(""), 4000);
+        {createExamError && (
+          <div
+            role="alert"
+            style={{
+              background: "#fef2f2",
+              border: "1px solid #f87171",
+              color: "#b91c1c",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              fontSize: "13px",
+              fontWeight: 500,
+            }}
+          >
+            {createExamError}
+          </div>
+        )}
+
+        {/* Baris 1: Nama Ujian, Mata Kuliah, Kode MK, Durasi Ujian (TC-32 > 0), & PIN Ujian (TC-06) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1.4fr 0.8fr 0.9fr 0.9fr",
+            gap: "12px",
+          }}
+        >
+          <label style={labelStyle}>
+            Nama Ujian
+            <input
+              required
+              autoFocus
+              value={newExamTitle}
+              onChange={(e) => setNewExamTitle(e.target.value)}
+              placeholder="Contoh: Kuis 1 Analisis Kebutuhan Sistem"
+              style={inputStyle}
+            />
+          </label>
+          <label style={labelStyle}>
+            Mata Kuliah
+            <input
+              required
+              value={newExamCourse}
+              onChange={(e) => setNewExamCourse(e.target.value)}
+              placeholder="Sistem Analisis & Desain"
+              style={inputStyle}
+            />
+          </label>
+          <label style={labelStyle}>
+            Kode MK
+            <input
+              required
+              value={newExamCode}
+              onChange={(e) => setNewExamCode(e.target.value)}
+              placeholder="IF-241"
+              style={inputStyle}
+            />
+          </label>
+          <label style={labelStyle}>
+            Durasi (menit) — TC-32 &gt; 0
+            <input
+              type="number"
+              required
+              value={newExamDur}
+              onChange={(e) => setNewExamDur(e.target.value)}
+              placeholder="90"
+              style={inputStyle}
+            />
+          </label>
+          <label style={labelStyle}>
+            PIN Ujian (6 digit) — TC-06
+            <input
+              required
+              maxLength={10}
+              value={newExamPinVal}
+              onChange={(e) => setNewExamPinVal(e.target.value)}
+              placeholder="483920"
+              style={inputStyle}
+            />
+          </label>
+        </div>
+
+        {/* Baris 2 (Khusus Jadwal - 2 Kolom Lebar Sejajar): Pemilih Tanggal & Jam Bergaya Alarm */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: "16px",
+          }}
+        >
+          <AlarmDateTimePicker
+            label="Jadwal Mulai (TC-08)"
+            value={newExamStart}
+            onChange={setNewExamStart}
+            presets={[
+              {
+                label: "Mulai Sekarang",
+                getValue: () => formatLocalDateTime(new Date()),
+              },
+              {
+                label: "Mulai +5 Menit Lagi",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 5 * 60000)),
+              },
+            ]}
+          />
+          <AlarmDateTimePicker
+            label="Jadwal Selesai (TC-31)"
+            value={newExamEnd}
+            onChange={setNewExamEnd}
+            presets={[
+              {
+                label: "+90 Menit",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 90 * 60000)),
+              },
+              {
+                label: "+7 Hari",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 7 * 86400000)),
+              },
+              {
+                label: "Set Sudah Berakhir (-1 Menit Lalu)",
+                getValue: () => formatLocalDateTime(new Date(Date.now() - 60000)),
+              },
+            ]}
+          />
+        </div>
+
+        {/* Footer Form Buat Ujian Baru: Tombol Batal & Simpan Ujian Baru */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: "10px",
+            paddingTop: "12px",
+            borderTop: "1px solid #e2e8f0",
+          }}
+        >
+          <button
+            type="button"
+            className="button secondary"
+            onClick={cancelCreateExamForm}
+          >
+            Batal
+          </button>
+          <button className="button primary" type="submit" disabled={isCreatingExam}>
+            <Icon name="save" size={16} /> {isCreatingExam ? "Menyimpan..." : "Simpan Ujian Baru"}
+          </button>
+        </div>
+      </form>
+    );
   };
 
   const handleSaveExamSettings = () => {
@@ -1912,19 +2539,40 @@ function LecturerModule({ active }: { active: string }) {
   const handleAddParticipant = (event: FormEvent) => {
     event.preventDefault();
     const cleanNim = newNim.trim();
-    const cleanName = newStudentName.trim() || `Mahasiswa (${cleanNim})`;
     if (!cleanNim) return;
 
     const db = loadLocalDB();
-    if (!db.participants.some((p: ParticipantItem) => p.nim === cleanNim)) {
-      db.participants.push({
-        id_mahasiswa: `MHS_${Date.now().toString().slice(-4)}`,
-        nim: cleanNim,
-        nama: cleanName,
-        kelas: "Kelas A",
-      });
+    // Cari apakah mahasiswa sudah ada di database users untuk melengkapi namanya jika kosong
+    const existingUser = (db.users || []).find(
+      (u: any) => u.nim === cleanNim || u.username === cleanNim
+    );
+    const cleanName =
+      newStudentName.trim() ||
+      existingUser?.nama ||
+      `Mahasiswa (${cleanNim})`;
+
+    const alreadyInThisExam = db.participants.some(
+      (p: ParticipantItem) =>
+        p.nim === cleanNim && (p.id_ujian || p.examId || "UJN_01") === selectedExamId
+    );
+    if (alreadyInThisExam) {
+      setParticipantMsg(
+        `Peserta ${cleanName} (${cleanNim}) sudah terdaftar pada mata kuliah/ujian "${currentExam?.nama_ujian}".`
+      );
+      setTimeout(() => setParticipantMsg(""), 3500);
+      return;
     }
-    if (!db.users.some((u: any) => u.nim === cleanNim || u.username === cleanNim)) {
+
+    db.participants.push({
+      id_mahasiswa: `MHS_${Date.now().toString().slice(-4)}_${selectedExamId}`,
+      nim: cleanNim,
+      nama: cleanName,
+      kelas: "Kelas A",
+      id_ujian: selectedExamId,
+      examId: selectedExamId,
+    });
+
+    if (!existingUser) {
       db.users.push({
         id_pengguna: `USR_${Date.now().toString().slice(-4)}`,
         username: cleanNim,
@@ -1940,42 +2588,59 @@ function LecturerModule({ active }: { active: string }) {
     setDbState(db);
     setNewNim("");
     setNewStudentName("");
-    setParticipantMsg(`Peserta ${cleanName} (${cleanNim}) berhasil ditambahkan ke ujian (TC-34 & TC-43).`);
+    setParticipantMsg(
+      `Peserta ${cleanName} (${cleanNim}) berhasil ditambahkan ke ujian "${currentExam?.nama_ujian}" (TC-34 & TC-43).`
+    );
     setTimeout(() => setParticipantMsg(""), 3500);
   };
 
-  const handleRemoveParticipant = (nim: string) => {
+  const handleRemoveParticipant = (nim: string, nama?: string) => {
     const db = loadLocalDB();
-    db.participants = db.participants.filter((p: ParticipantItem) => p.nim !== nim);
+    db.participants = db.participants.filter(
+      (p: ParticipantItem) =>
+        !(p.nim === nim && (p.id_ujian || p.examId || "UJN_01") === selectedExamId)
+    );
     saveLocalDB(db);
     setDbState(db);
-    setParticipantMsg(`Peserta dengan NIM ${nim} telah dihapus dari daftar peserta ujian (TC-34).`);
-    setTimeout(() => setParticipantMsg(""), 3500);
+    setConfirmDeleteParticipant(null);
+    setParticipantMsg(
+      `Mahasiswa ${nama ? `${nama} (${nim})` : `NIM ${nim}`} berhasil dihapus dari peserta ujian "${currentExam?.nama_ujian}" (TC-34).`
+    );
+    setTimeout(() => setParticipantMsg(""), 4000);
   };
 
   const handleAddExtraTime = async (nim?: string, idSesi?: string) => {
-    const res = await addExtraTimeForExamOrSession(selectedExamId, idSesi, 5);
+    const res = await addExtraTimeForExamOrSession(selectedExamId, idSesi, 5, nim);
     setDbState(loadLocalDB());
     setParticipantMsg(
       nim
-        ? `Waktu ujian untuk mahasiswa NIM ${nim} berhasil ditambah +5 menit secara real-time (TC-42).`
-        : res.message
+        ? `Waktu ujian untuk mahasiswa NIM ${nim} pada "${currentExam?.nama_ujian}" berhasil ditambah +5 menit secara real-time (TC-42).`
+        : `${res.message} (Ujian: ${currentExam?.nama_ujian})`
     );
     setTimeout(() => setParticipantMsg(""), 4000);
   };
 
   const handleGradeEssaySubmit = async (event?: FormEvent) => {
     if (event) event.preventDefault();
-    const rawScore = parseFloat(essayInputScore);
-    if (isNaN(rawScore)) return;
+    const rawScore = Number(essayInputScore);
+    if (isNaN(rawScore) || String(essayInputScore).trim() === "") return;
     const score = Math.max(0, Math.min(100, rawScore));
 
-    const targetSesiId = gradingModalSession?.id_sesi || "SES_DEMO_01";
-    const res = await gradeEssayAndRecalculate(targetSesiId, score);
-    setDbState(loadLocalDB());
+    const targetNim = gradingModalSession?.nim || "105022410021";
+    const targetName = gradingModalSession?.nama_mahasiswa || "Mahasiswa";
+    const targetExamId = gradingModalSession?.id_ujian || selectedExamId || "UJN_01";
+    const targetSesiId = gradingModalSession?.id_sesi || `SES_${targetExamId}_${targetNim}`;
+
+    const res = await gradeEssayAndRecalculate(targetSesiId, score, {
+      id_ujian: targetExamId,
+      nim: targetNim,
+      nama_mahasiswa: targetName,
+    });
+    const updatedDb = loadLocalDB();
+    setDbState(updatedDb);
     setGradingModalSession(null);
     setParticipantMsg(
-      `Nilai esai (${score}) berhasil disimpan! Total Nilai Akhir mahasiswa terakumulasi menjadi: ${res.totalNilai} (TC-40).`
+      `Nilai esai ${targetName} (${score}) berhasil disimpan dan diakumulasikan ke Nilai Akhir: ${res.totalNilai} / 100 (TC-40).`
     );
     setTimeout(() => setParticipantMsg(""), 4500);
   };
@@ -2016,6 +2681,461 @@ function LecturerModule({ active }: { active: string }) {
       currentExam?.nama_ujian?.toUpperCase() ||
       "SISTEM ANALISIS & DESAIN";
 
+    // Komponen Inline Form Card bergaya Google Forms (100% Lebar Halaman, Tanpa Modal Pop-up)
+    const renderInlineQuestionForm = (editIndex?: number) => {
+      const isEditing = Boolean(editingQuestionId);
+      return (
+        <form
+          id="inline-question-form-card"
+          onSubmit={handleSaveQuestion}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            background: "#ffffff",
+            border: "2px solid #2b5c6b",
+            borderTop: "6px solid #2b5c6b",
+            borderRadius: "12px",
+            padding: "20px 24px",
+            boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            marginBottom: isEditing ? "0px" : "16px",
+          }}
+        >
+          {/* Baris Atas (Header Form Inline): Kiri Judul & Badge Ujian, Kanan Dropdown Tipe Soal & Bobot Poin */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
+              paddingBottom: "14px",
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            {/* Sisi Kiri: Judul Form & Badge Ujian Aktif */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <h3
+                id="modal-soal-title"
+                style={{
+                  margin: 0,
+                  fontSize: "17px",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              >
+                {isEditing ? `Edit Soal #${editIndex ?? ""}` : "Tambah Butir Soal Baru"}
+              </h3>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  color: "#2b5c6b",
+                  background: "#e6f0f3",
+                  padding: "3px 10px",
+                  borderRadius: "999px",
+                }}
+              >
+                {isEditing ? "UBAH SOAL (TC-29)" : "TAMBAH SOAL BARU (TC-29)"}
+              </span>
+              <span
+                style={{
+                  padding: "3px 10px",
+                  background: "#f0f9ff",
+                  borderRadius: "6px",
+                  border: "1px solid #bae6fd",
+                  fontSize: "12px",
+                  color: "#0369a1",
+                }}
+              >
+                Terikat: <strong>{currentExam?.nama_ujian} ({currentExam?.kode_mk || "IF-241"})</strong>
+              </span>
+            </div>
+
+            {/* Sisi Kanan: Dropdown Tipe Soal & Input Bobot Poin Sejajar (Gaya Google Forms) */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                }}
+              >
+                <span>Tipe Soal:</span>
+                <select
+                  aria-label="Tipe Soal (TC-37 & TC-38)"
+                  value={qType}
+                  onChange={(e) => {
+                    const nextType = e.target.value as QuestionItem["tipe_soal"];
+                    setQType(nextType);
+                    if (nextType === "Benar/Salah") setQKey("Benar");
+                    else setQKey("");
+                  }}
+                  style={{
+                    height: "36px",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    background: "#f8fafc",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="Pilihan Ganda">Pilihan Ganda (4 Opsi)</option>
+                  <option value="Benar/Salah">Benar/Salah (2 Opsi)</option>
+                  <option value="Isian Singkat">Isian Singkat</option>
+                  <option value="Esai">Esai (Uraian Manual)</option>
+                </select>
+              </label>
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                }}
+              >
+                <span>Bobot Poin:</span>
+                <input
+                  type="number"
+                  aria-label="Bobot Poin"
+                  min={1}
+                  value={qWeight}
+                  onChange={(e) => setQWeight(e.target.value)}
+                  placeholder="15"
+                  style={{
+                    width: "80px",
+                    height: "36px",
+                    boxSizing: "border-box",
+                    padding: "6px 10px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13.5px",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    background: "#ffffff",
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Pesan Error Validasi (TC-30) */}
+          {qError && (
+            <div
+              role="alert"
+              style={{
+                background: "#fef2f2",
+                border: "1px solid #f87171",
+                color: "#b91c1c",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: 500,
+              }}
+            >
+              {qError}
+            </div>
+          )}
+
+          {/* Baris Tengah: Input Teks Pertanyaan Lebar Penuh */}
+          <label
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#334155",
+            }}
+          >
+            Teks Pertanyaan
+            <textarea
+              rows={2}
+              value={qText}
+              onChange={(e) => setQText(e.target.value)}
+              placeholder="Tuliskan pertanyaan ujian di sini..."
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                border: "1.5px solid #cbd5e1",
+                background: "#f8fafc",
+                fontFamily: "inherit",
+                fontSize: "15px",
+                fontWeight: 500,
+                color: "#0f172a",
+                lineHeight: 1.5,
+                resize: "vertical",
+              }}
+            />
+          </label>
+
+          {/* Baris Bawah: Daftar Opsi Jawaban Vertikal Lebar Penuh (1 baris = 1 opsi lebar penuh) */}
+          {qType === "Pilihan Ganda" && (
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "8px" }}>
+                Opsi Jawaban{" "}
+                <span style={{ fontWeight: 400, color: "#64748b" }}>
+                  — klik radio di sebelah kiri untuk menetapkan Kunci Jawaban (TC-30)
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {qOptions.map((opt, idx) => {
+                  const isKey = qKey !== "" && opt.trim() !== "" && opt === qKey;
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 14px",
+                        borderRadius: "8px",
+                        border: isKey ? "1.5px solid #10b981" : "1px solid #e2e8f0",
+                        background: isKey ? "#ecfdf5" : "#f8fafc",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="kunci-pg"
+                        aria-label={`Jadikan opsi ${String.fromCharCode(65 + idx)} sebagai kunci jawaban`}
+                        checked={isKey}
+                        disabled={!opt.trim()}
+                        onChange={() => setQKey(opt)}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          accentColor: "#10b981",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "6px",
+                          display: "grid",
+                          placeItems: "center",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          background: isKey ? "#10b981" : "#e2e8f0",
+                          color: isKey ? "#ffffff" : "#334155",
+                        }}
+                      >
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <input
+                        value={opt}
+                        onChange={(e) => {
+                          const next = [...qOptions];
+                          next[idx] = e.target.value;
+                          setQOptions(next);
+                          if (isKey) setQKey(e.target.value);
+                        }}
+                        placeholder={`Teks opsi jawaban ${String.fromCharCode(65 + idx)}...`}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: isKey ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                          fontSize: "14px",
+                          color: "#0f172a",
+                          background: "#ffffff",
+                        }}
+                      />
+                      {isKey && (
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "3px 10px",
+                            borderRadius: "999px",
+                            background: "#10b981",
+                            color: "#ffffff",
+                          }}
+                        >
+                          ✓ Kunci Jawaban
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Benar/Salah */}
+          {qType === "Benar/Salah" && (
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "8px" }}>
+                Kunci Jawaban Benar / Salah (TC-30)
+              </div>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                {["Benar", "Salah"].map((label) => {
+                  const isKey = qKey === label;
+                  return (
+                    <label
+                      key={label}
+                      style={{
+                        flex: "1 1 200px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "10px 16px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        border: isKey ? "1.5px solid #10b981" : "1px solid #e2e8f0",
+                        background: isKey ? "#ecfdf5" : "#f8fafc",
+                        color: isKey ? "#065f46" : "#475569",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="kunci-bs"
+                        checked={isKey}
+                        onChange={() => setQKey(label)}
+                        style={{ width: "17px", height: "17px", accentColor: "#10b981" }}
+                      />
+                      {label}
+                      {isKey && (
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            background: "#10b981",
+                            color: "#ffffff",
+                          }}
+                        >
+                          ✓ Kunci Jawaban
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Isian Singkat */}
+          {qType === "Isian Singkat" && (
+            <label
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+              }}
+            >
+              Kunci Jawaban Singkat (Wajib - TC-30)
+              <input
+                value={qKey}
+                onChange={(e) => setQKey(e.target.value)}
+                placeholder="Masukkan kunci jawaban singkat (kosongkan untuk uji validasi TC-30)"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  border: "1.5px solid #10b981",
+                  background: "#ecfdf5",
+                  fontSize: "14px",
+                  color: "#065f46",
+                  fontWeight: 500,
+                }}
+              />
+            </label>
+          )}
+
+          {/* Esai */}
+          {qType === "Esai" && (
+            <label
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+              }}
+            >
+              Pedoman / Rubrik Penilaian Dosen (Opsional - TC-40)
+              <textarea
+                rows={2}
+                value={qKey}
+                onChange={(e) => setQKey(e.target.value)}
+                placeholder="Tuliskan rubrik / poin-poin jawaban ideal untuk membantu penilaian manual..."
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #fde68a",
+                  background: "#fffbeb",
+                  fontFamily: "inherit",
+                  fontSize: "14px",
+                  color: "#78350f",
+                  lineHeight: 1.5,
+                  resize: "vertical",
+                }}
+              />
+            </label>
+          )}
+
+          {/* Footer Kartu Form Inline */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "10px",
+              paddingTop: "14px",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          >
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => {
+                setQuestionModalOpen(false);
+                setEditingQuestionId(null);
+                setQError("");
+              }}
+            >
+              Batal
+            </button>
+            <button className="button primary" type="submit">
+              <Icon name="save" size={16} /> {isEditing ? "Simpan Perubahan" : "Simpan Soal"}
+            </button>
+          </div>
+        </form>
+      );
+    };
+
     return (
       <section className="management-panel">
         {/* Header Toolbar Dinamis Mengikuti Ujian Aktif */}
@@ -2035,11 +3155,7 @@ function LecturerModule({ active }: { active: string }) {
             <button
               className="button secondary"
               type="button"
-              onClick={() => {
-                setNewExamTitle("");
-                setCreateExamError("");
-                setCreateExamModalOpen(true);
-              }}
+              onClick={openCreateExamForm}
               title="Buat Ujian Baru (Ketentuan 4)"
             >
               <Icon name="calendar" size={17} /> + Buat Ujian Baru
@@ -2049,6 +3165,9 @@ function LecturerModule({ active }: { active: string }) {
             </button>
           </div>
         </div>
+
+        {/* Inline Form Card Buat Ujian Baru (Tanpa Modal Pop-up) */}
+        {renderInlineCreateExamForm()}
 
         {/* Notifikasi Sukses Operasi CRUD */}
         {qSuccessMsg && (
@@ -2092,6 +3211,8 @@ function LecturerModule({ active }: { active: string }) {
                 onChange={(e) => {
                   setSelectedExamId(e.target.value);
                   setSearchQuery("");
+                  setQuestionModalOpen(false);
+                  setEditingQuestionId(null);
                 }}
                 style={{
                   width: "100%",
@@ -2105,7 +3226,7 @@ function LecturerModule({ active }: { active: string }) {
                   cursor: "pointer",
                 }}
               >
-                {(dbState.exams || []).map((ex: ExamItem) => {
+                {uniqueExams.map((ex: ExamItem) => {
                   const count = (dbState.questions || []).filter(
                     (q: QuestionItem) => (q.id_ujian || q.examId || "UJN_01") === ex.id_ujian
                   ).length;
@@ -2196,73 +3317,264 @@ function LecturerModule({ active }: { active: string }) {
           </div>
         </div>
 
-        {/* Tabel Data Soal Terisolasi per Ujian */}
+        {/* Inline Form Card Tambah Soal Baru (Muncul tepat di atas daftar soal saat tombol "+ Tambah Soal" diklik) */}
+        {questionModalOpen && !editingQuestionId && renderInlineQuestionForm()}
+
+        {/* Daftar Soal: Stacked Question Cards (gaya Google Forms / CBT modern) */}
         {filteredQuestions.length > 0 ? (
-          <div className="data-table">
-            <div className="table-row table-head">
-              <span style={{ maxWidth: "48px" }}>No</span>
-              <span>Pertanyaan &amp; Kunci Jawaban</span>
-              <span>Tipe</span>
-              <span>Bobot</span>
-              <span>Aksi</span>
-            </div>
-            {filteredQuestions.map((item, idx) => (
-              <div className="table-row" key={item.id_soal}>
-                <span style={{ maxWidth: "48px", fontWeight: "600", color: "#64748b" }}>
-                  {idx + 1}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+            {filteredQuestions.map((item, idx) => {
+              // Jika soal ini sedang di-edit, ubah langsung kartu soal ini menjadi Inline Edit Card (gaya Google Forms)
+              if (questionModalOpen && editingQuestionId === item.id_soal) {
+                return <div key={item.id_soal}>{renderInlineQuestionForm(idx + 1)}</div>;
+              }
+
+              const typeStyles: Record<string, { bg: string; fg: string; border: string }> = {
+                "Pilihan Ganda": { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" },
+                "Benar/Salah": { bg: "#f5f3ff", fg: "#6d28d9", border: "#ddd6fe" },
+                "Isian Singkat": { bg: "#ecfeff", fg: "#0e7490", border: "#a5f3fc" },
+                Esai: { bg: "#fff7ed", fg: "#c2410c", border: "#fed7aa" },
+              };
+              const ts = typeStyles[item.tipe_soal] || typeStyles["Pilihan Ganda"];
+              const keyText = (item.kunci_jawaban || "").trim();
+              const keyBadge = (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    flexShrink: 0,
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: "999px",
+                    background: "#10b981",
+                    color: "#ffffff",
+                  }}
+                >
+                  ✓ Kunci Jawaban
                 </span>
-                <div>
-                  <strong style={{ display: "block", marginBottom: "4px", color: "#1e293b" }}>
+              );
+              const optionBase = {
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                fontSize: "14px",
+              } as const;
+
+              return (
+                <article
+                  key={item.id_soal}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderLeft: "5px solid #2b5c6b",
+                    borderRadius: "12px",
+                    padding: "20px 24px",
+                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05)",
+                  }}
+                >
+                  {/* Bagian A: Header Kartu */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          background: "#f1f5f9",
+                          color: "#0f172a",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          padding: "4px 12px",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        Soal #{idx + 1}
+                      </span>
+                      <span
+                        style={{
+                          background: ts.bg,
+                          color: ts.fg,
+                          border: `1px solid ${ts.border}`,
+                          fontWeight: 600,
+                          fontSize: "12px",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                        }}
+                      >
+                        ● {item.tipe_soal}
+                      </span>
+                      <span
+                        style={{
+                          background: "#fef3c7",
+                          color: "#92400e",
+                          border: "1px solid #fde68a",
+                          fontWeight: 600,
+                          fontSize: "12px",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                        }}
+                      >
+                        ★ {item.bobot} Poin
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        aria-label="Ubah soal"
+                        onClick={() => openEditQuestionModal(item)}
+                        title="Ubah Soal (TC-29)"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          background: "#ffffff",
+                          color: "#334155",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Icon name="edit" size={14} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Hapus soal"
+                        onClick={() => handleDeleteQuestion(item.id_soal)}
+                        title="Hapus Soal (TC-29)"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #fecaca",
+                          background: "#fef2f2",
+                          color: "#dc2626",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Icon name="trash" size={14} /> Hapus
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bagian B: Isi Pertanyaan */}
+                  <p
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      margin: "14px 0",
+                      lineHeight: 1.5,
+                    }}
+                  >
                     {item.pertanyaan}
-                  </strong>
-                  <small style={{ color: "#64748b", fontSize: "12px" }}>
-                    {item.tipe_soal === "Esai"
-                      ? "Kunci: Dinilai manual oleh Dosen (TC-40)"
-                      : `Kunci Jawaban: ${item.kunci_jawaban}`}
-                  </small>
-                  {item.tipe_soal === "Pilihan Ganda" && Array.isArray(item.opsi_jawaban) && (
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
-                      {item.opsi_jawaban.map((op, oIdx) => (
-                        <span
-                          key={oIdx}
-                          style={{
-                            fontSize: "11px",
-                            padding: "2px 8px",
-                            borderRadius: "4px",
-                            background: op === item.kunci_jawaban ? "#dcfce7" : "#f1f5f9",
-                            color: op === item.kunci_jawaban ? "#15803d" : "#475569",
-                            border: op === item.kunci_jawaban ? "1px solid #86efac" : "1px solid #e2e8f0",
-                          }}
-                        >
-                          <strong>{String.fromCharCode(65 + oIdx)}:</strong> {op}
-                        </span>
-                      ))}
+                  </p>
+
+                  {/* Bagian C: Opsi / Kunci Jawaban sesuai tipe */}
+                  {item.tipe_soal === "Pilihan Ganda" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "8px" }}>
+                      {(Array.isArray(item.opsi_jawaban) ? item.opsi_jawaban : []).map((op, oIdx) => {
+                        const isKey = op === item.kunci_jawaban;
+                        return (
+                          <div
+                            key={oIdx}
+                            style={{
+                              ...optionBase,
+                              background: isKey ? "#ecfdf5" : "#f8fafc",
+                              border: isKey ? "1px solid #10b981" : "1px solid #e2e8f0",
+                              color: isKey ? "#065f46" : "#475569",
+                              fontWeight: isKey ? 600 : 400,
+                            }}
+                          >
+                            <span style={{ width: "18px", textAlign: "center", fontWeight: 700 }}>
+                              {isKey ? "✔" : "○"}
+                            </span>
+                            <span>
+                              <strong>{String.fromCharCode(65 + oIdx)}.</strong> {op}
+                            </span>
+                            {isKey && keyBadge}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
-                <span>
-                  <i className="type-dot" />
-                  {item.tipe_soal}
-                </span>
-                <span>{item.bobot} poin</span>
-                <span className="row-actions">
-                  <button
-                    aria-label="Ubah soal"
-                    onClick={() => openEditQuestionModal(item)}
-                    title="Ubah Soal (TC-29)"
-                  >
-                    <Icon name="edit" size={16} />
-                  </button>
-                  <button
-                    aria-label="Hapus soal"
-                    onClick={() => handleDeleteQuestion(item.id_soal)}
-                    title="Hapus Soal (TC-29)"
-                  >
-                    <Icon name="trash" size={16} />
-                  </button>
-                </span>
-              </div>
-            ))}
+
+                  {item.tipe_soal === "Benar/Salah" && (
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      {["Benar", "Salah"].map((label) => {
+                        const isKey = keyText.toLowerCase() === label.toLowerCase();
+                        return (
+                          <div
+                            key={label}
+                            style={{
+                              ...optionBase,
+                              flex: "1 1 180px",
+                              background: isKey ? "#ecfdf5" : "#f8fafc",
+                              border: isKey ? "1px solid #10b981" : "1px solid #e2e8f0",
+                              color: isKey ? "#065f46" : "#475569",
+                              fontWeight: isKey ? 600 : 400,
+                            }}
+                          >
+                            <span style={{ fontWeight: 700 }}>{isKey ? "(✔)" : "( )"}</span>
+                            <span>{label}</span>
+                            {isKey && keyBadge}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {item.tipe_soal === "Isian Singkat" && (
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        background: "#ecfdf5",
+                        border: "1px solid #a7f3d0",
+                        borderBottom: "2px dashed #10b981",
+                        borderRadius: "8px 8px 0 0",
+                        color: "#065f46",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <strong>Kunci Jawaban Singkat:</strong> {keyText || "-"}
+                    </div>
+                  )}
+
+                  {item.tipe_soal === "Esai" && (
+                    <div
+                      style={{
+                        padding: "12px 14px",
+                        background: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderRadius: "8px",
+                        color: "#78350f",
+                        fontSize: "13px",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong>📄 Pedoman / Rubrik Penilaian Dosen (TC-40):</strong>{" "}
+                      {keyText || "Dinilai manual oleh Dosen pada menu Nilai Ujian."}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         ) : (
           /* Empty State Informatif (Ketentuan 2) */
@@ -2316,221 +3628,6 @@ function LecturerModule({ active }: { active: string }) {
             </div>
           )
         )}
-
-        {/* Modal Tambah / Ubah Soal (Ketentuan 3) */}
-        {questionModalOpen && (
-          <Modal labelledBy="modal-soal-title" onClose={() => setQuestionModalOpen(false)}>
-            <p className="modal-kicker">{editingQuestionId ? "UBAH SOAL (TC-29)" : "TAMBAH SOAL BARU (TC-29)"}</p>
-            <h2 id="modal-soal-title">{editingQuestionId ? "Perbarui Butir Soal" : "Tambah Soal ke Bank Soal"}</h2>
-
-            <div
-              style={{
-                padding: "8px 12px",
-                background: "#f0f9ff",
-                borderRadius: "8px",
-                border: "1px solid #bae6fd",
-                marginBottom: "14px",
-                fontSize: "12px",
-                color: "#0369a1",
-              }}
-            >
-              Terikat pada Ujian: <strong>{currentExam?.nama_ujian} ({currentExam?.kode_mk || "IF-241"})</strong>
-            </div>
-
-            {qError && (
-              <div
-                role="alert"
-                style={{
-                  background: "#fef2f2",
-                  border: "1px solid #f87171",
-                  color: "#b91c1c",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  marginBottom: "12px",
-                }}
-              >
-                {qError}
-              </div>
-            )}
-
-            <form className="login-form" onSubmit={handleSaveQuestion}>
-              <label>
-                Tipe Soal (TC-37 &amp; TC-38)
-                <select
-                  value={qType}
-                  onChange={(e) => {
-                    const nextType = e.target.value as QuestionItem["tipe_soal"];
-                    setQType(nextType);
-                    if (nextType === "Benar/Salah") setQKey("Benar");
-                    else if (nextType === "Esai") setQKey("");
-                  }}
-                  style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
-                >
-                  <option value="Pilihan Ganda">Pilihan Ganda (4 Opsi)</option>
-                  <option value="Benar/Salah">Benar/Salah (2 Opsi)</option>
-                  <option value="Isian Singkat">Isian Singkat</option>
-                  <option value="Esai">Esai (Uraian Manual)</option>
-                </select>
-              </label>
-
-              <label>
-                Teks Pertanyaan
-                <textarea
-                  rows={3}
-                  value={qText}
-                  onChange={(e) => setQText(e.target.value)}
-                  placeholder="Tuliskan pertanyaan ujian..."
-                  style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontFamily: "inherit" }}
-                />
-              </label>
-
-              {qType === "Pilihan Ganda" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                  {qOptions.map((opt, idx) => (
-                    <label key={idx} style={{ fontSize: "12px" }}>
-                      Opsi {String.fromCharCode(65 + idx)}
-                      <input
-                        value={opt}
-                        onChange={(e) => {
-                          const next = [...qOptions];
-                          next[idx] = e.target.value;
-                          setQOptions(next);
-                        }}
-                        placeholder={`Opsi ${String.fromCharCode(65 + idx)}`}
-                      />
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {qType !== "Esai" && (
-                <label>
-                  Kunci Jawaban (Wajib untuk Soal Objektif - TC-30)
-                  {qType === "Benar/Salah" ? (
-                    <select
-                      value={qKey}
-                      onChange={(e) => setQKey(e.target.value)}
-                      style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
-                    >
-                      <option value="">-- Pilih Kunci Jawaban --</option>
-                      <option value="Benar">Benar</option>
-                      <option value="Salah">Salah</option>
-                    </select>
-                  ) : (
-                    <input
-                      value={qKey}
-                      onChange={(e) => setQKey(e.target.value)}
-                      placeholder="Masukkan teks kunci jawaban yang benar (kosongkan untuk uji validasi TC-30)"
-                    />
-                  )}
-                </label>
-              )}
-
-              <label>
-                Bobot Poin
-                <input
-                  type="number"
-                  value={qWeight}
-                  onChange={(e) => setQWeight(e.target.value)}
-                  placeholder="15"
-                />
-              </label>
-
-              <button className="button primary wide" type="submit">
-                <Icon name="save" size={17} /> Simpan Soal ke Ujian Ini
-              </button>
-            </form>
-          </Modal>
-        )}
-
-        {/* Modal Buat Ujian Baru (Ketentuan 4) */}
-        {createExamModalOpen && (
-          <Modal labelledBy="modal-new-exam-title" onClose={() => setCreateExamModalOpen(false)}>
-            <p className="modal-kicker">PENGELOLAAN UJIAN (TC-32)</p>
-            <h2 id="modal-new-exam-title">Buat Ujian Baru</h2>
-            <p className="modal-subtitle">Tambahkan jadwal ujian baru yang akan langsung muncul di dropdown Bank Soal.</p>
-
-            {createExamError && (
-              <div
-                role="alert"
-                style={{
-                  background: "#fef2f2",
-                  border: "1px solid #f87171",
-                  color: "#b91c1c",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  marginBottom: "12px",
-                }}
-              >
-                {createExamError}
-              </div>
-            )}
-
-            <form className="login-form" onSubmit={handleCreateNewExam}>
-              <label>
-                Nama Ujian
-                <input
-                  required
-                  autoFocus
-                  value={newExamTitle}
-                  onChange={(e) => setNewExamTitle(e.target.value)}
-                  placeholder="Contoh: Kuis 1 Analisis Kebutuhan Sistem"
-                />
-              </label>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label>
-                  Mata Kuliah
-                  <input
-                    required
-                    value={newExamCourse}
-                    onChange={(e) => setNewExamCourse(e.target.value)}
-                    placeholder="Sistem Analisis & Desain"
-                  />
-                </label>
-                <label>
-                  Kode MK
-                  <input
-                    required
-                    value={newExamCode}
-                    onChange={(e) => setNewExamCode(e.target.value)}
-                    placeholder="IF-241"
-                  />
-                </label>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label>
-                  Durasi Ujian (menit) — TC-32 &gt; 0
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={newExamDur}
-                    onChange={(e) => setNewExamDur(e.target.value)}
-                    placeholder="90"
-                  />
-                </label>
-                <label>
-                  PIN Ujian (6 digit) — TC-06
-                  <input
-                    required
-                    maxLength={10}
-                    value={newExamPinVal}
-                    onChange={(e) => setNewExamPinVal(e.target.value)}
-                    placeholder="483920"
-                  />
-                </label>
-              </div>
-
-              <button className="button primary wide" type="submit" style={{ marginTop: "10px" }}>
-                <Icon name="save" size={17} /> Simpan Ujian Baru
-              </button>
-            </form>
-          </Modal>
-        )}
       </section>
     );
   }
@@ -2548,11 +3645,7 @@ function LecturerModule({ active }: { active: string }) {
             <button
               className="button secondary"
               type="button"
-              onClick={() => {
-                setNewExamTitle("");
-                setCreateExamError("");
-                setCreateExamModalOpen(true);
-              }}
+              onClick={openCreateExamForm}
               title="Buat Ujian Baru (Ketentuan 4)"
             >
               <Icon name="calendar" size={17} /> + Buat Ujian Baru
@@ -2563,20 +3656,32 @@ function LecturerModule({ active }: { active: string }) {
               onChange={(e) => {
                 setSelectedExamId(e.target.value);
                 setSettingsMsg(null);
+                setConfirmDeleteExam(false);
               }}
               style={{ padding: "9px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "13px" }}
             >
-              {(dbState.exams || []).map((ex: ExamItem) => (
+              {uniqueExams.map((ex: ExamItem) => (
                 <option key={ex.id_ujian} value={ex.id_ujian}>
                   {ex.nama_ujian} ({ex.kode_mk || "IF-241"})
                 </option>
               ))}
             </select>
-            <button className="button primary" onClick={handleSaveExamSettings}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={handleResetExamSettings}
+              title="Batalkan perubahan dan kembalikan ke pengaturan awal ujian"
+            >
+              Batal
+            </button>
+            <button type="button" className="button primary" onClick={handleSaveExamSettings}>
               <Icon name="save" size={17} /> Simpan Pengaturan
             </button>
           </div>
         </div>
+
+        {/* Inline Form Card Buat Ujian Baru (Tanpa Modal Pop-up) */}
+        {renderInlineCreateExamForm()}
 
         {settingsMsg && (
           <div
@@ -2600,14 +3705,6 @@ function LecturerModule({ active }: { active: string }) {
           <label>
             Nama ujian
             <input value={examName} onChange={(e) => setExamName(e.target.value)} />
-          </label>
-          <label>
-            Jadwal mulai (TC-08)
-            <input value={examStart} onChange={(e) => setExamStart(e.target.value)} type="text" />
-          </label>
-          <label>
-            Jadwal selesai (TC-31)
-            <input value={examEnd} onChange={(e) => setExamEnd(e.target.value)} type="text" />
           </label>
           <label>
             Durasi (menit) — Uji TC-32 jika &le; 0
@@ -2653,6 +3750,52 @@ function LecturerModule({ active }: { active: string }) {
             </select>
           </label>
         </div>
+
+        {/* Baris Jadwal Mulai & Jadwal Selesai Bergaya Alarm (2 Kolom Lebar Sejajar) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: "16px",
+            marginTop: "14px",
+            marginBottom: "14px",
+          }}
+        >
+          <AlarmDateTimePicker
+            label="Jadwal Mulai (TC-08)"
+            value={examStart}
+            onChange={setExamStart}
+            presets={[
+              {
+                label: "Mulai Sekarang",
+                getValue: () => formatLocalDateTime(new Date()),
+              },
+              {
+                label: "Mulai +5 Menit Lagi",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 5 * 60000)),
+              },
+            ]}
+          />
+          <AlarmDateTimePicker
+            label="Jadwal Selesai (TC-31)"
+            value={examEnd}
+            onChange={setExamEnd}
+            presets={[
+              {
+                label: "+90 Menit",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 90 * 60000)),
+              },
+              {
+                label: "+7 Hari",
+                getValue: () => formatLocalDateTime(new Date(Date.now() + 7 * 86400000)),
+              },
+              {
+                label: "Set Sudah Berakhir (-1 Menit Lalu)",
+                getValue: () => formatLocalDateTime(new Date(Date.now() - 60000)),
+              },
+            ]}
+          />
+        </div>
         <div className="toggle-list">
           <label>
             <div>
@@ -2689,117 +3832,200 @@ function LecturerModule({ active }: { active: string }) {
           </label>
         </div>
 
-        {createExamModalOpen && (
-          <Modal labelledBy="modal-new-exam-title-atur" onClose={() => setCreateExamModalOpen(false)}>
-            <p className="modal-kicker">PENGELOLAAN UJIAN (TC-32)</p>
-            <h2 id="modal-new-exam-title-atur">Buat Ujian Baru</h2>
-            <p className="modal-subtitle">Tambahkan jadwal ujian baru yang akan langsung muncul di dropdown Bank Soal.</p>
-
-            {createExamError && (
+        {/* Footer Aksi Pengaturan Ujian: Hapus Ujian Ini (kiri) + Batal & Simpan Pengaturan (kanan) */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginTop: "20px",
+            paddingTop: "16px",
+            borderTop: "1px solid #e2e8f0",
+          }}
+        >
+          <div>
+            {confirmDeleteExam ? (
               <div
-                role="alert"
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
                   background: "#fef2f2",
-                  border: "1px solid #f87171",
-                  color: "#b91c1c",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  marginBottom: "12px",
+                  border: "1px solid #fca5a5",
                 }}
               >
-                {createExamError}
+                <span style={{ fontSize: "12.5px", fontWeight: 600, color: "#991b1b" }}>
+                  Yakin hapus ujian "{currentExam?.nama_ujian}"?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteExam(selectedExamId, currentExam?.nama_ujian)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #dc2626",
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                  }}
+                >
+                  <Icon name="trash" size={14} /> Ya, Hapus Ujian
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteExam(false)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#334155",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Batal
+                </button>
               </div>
-            )}
-
-            <form className="login-form" onSubmit={handleCreateNewExam}>
-              <label>
-                Nama Ujian
-                <input
-                  required
-                  autoFocus
-                  value={newExamTitle}
-                  onChange={(e) => setNewExamTitle(e.target.value)}
-                  placeholder="Contoh: Kuis 1 Analisis Kebutuhan Sistem"
-                />
-              </label>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label>
-                  Mata Kuliah
-                  <input
-                    required
-                    value={newExamCourse}
-                    onChange={(e) => setNewExamCourse(e.target.value)}
-                    placeholder="Sistem Analisis & Desain"
-                  />
-                </label>
-                <label>
-                  Kode MK
-                  <input
-                    required
-                    value={newExamCode}
-                    onChange={(e) => setNewExamCode(e.target.value)}
-                    placeholder="IF-241"
-                  />
-                </label>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label>
-                  Durasi Ujian (menit) — TC-32 &gt; 0
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={newExamDur}
-                    onChange={(e) => setNewExamDur(e.target.value)}
-                    placeholder="90"
-                  />
-                </label>
-                <label>
-                  PIN Ujian (6 digit) — TC-06
-                  <input
-                    required
-                    maxLength={10}
-                    value={newExamPinVal}
-                    onChange={(e) => setNewExamPinVal(e.target.value)}
-                    placeholder="483920"
-                  />
-                </label>
-              </div>
-
-              <button className="button primary wide" type="submit" style={{ marginTop: "10px" }}>
-                <Icon name="save" size={17} /> Simpan Ujian Baru
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteExam(true)}
+                disabled={uniqueExams.length <= 1}
+                title={
+                  uniqueExams.length <= 1
+                    ? "Minimal harus ada 1 ujian aktif di sistem"
+                    : "Hapus jadwal ujian ini secara permanen"
+                }
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "9px 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#dc2626",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: uniqueExams.length <= 1 ? "not-allowed" : "pointer",
+                  opacity: uniqueExams.length <= 1 ? 0.5 : 1,
+                }}
+              >
+                <Icon name="trash" size={15} /> Hapus Ujian Ini
               </button>
-            </form>
-          </Modal>
-        )}
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={handleResetExamSettings}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              onClick={handleSaveExamSettings}
+            >
+              <Icon name="save" size={17} /> Simpan Pengaturan
+            </button>
+          </div>
+        </div>
       </section>
     );
   }
 
   if (active === "Kelola Peserta") {
-    const participants: ParticipantItem[] = dbState.participants || [];
-    const sessions = dbState.sessions || [];
+    const allParticipants: ParticipantItem[] = dbState.participants || [];
+    const examParticipants: ParticipantItem[] = allParticipants.filter(
+      (p: ParticipantItem) => (p.id_ujian || p.examId || "UJN_01") === selectedExamId
+    );
+    const sessions = (dbState.sessions || []).filter(
+      (s: any) => (s.id_ujian || "UJN_01") === selectedExamId
+    );
+
+    const cleanSearch = participantSearch.toLowerCase().trim();
+    const filteredParticipants = examParticipants.filter((p: ParticipantItem) => {
+      if (!cleanSearch) return true;
+      return (
+        p.nama.toLowerCase().includes(cleanSearch) ||
+        p.nim.toLowerCase().includes(cleanSearch) ||
+        (p.kelas && p.kelas.toLowerCase().includes(cleanSearch))
+      );
+    });
+
+    // Default urutkan berdasarkan Abjad Nama (A–Z) secara rapi
+    const sortedParticipants = [...filteredParticipants].sort((a, b) => {
+      if (participantSort === "nama-asc") {
+        return a.nama.localeCompare(b.nama, "id");
+      }
+      if (participantSort === "nama-desc") {
+        return b.nama.localeCompare(a.nama, "id");
+      }
+      return a.nim.localeCompare(b.nim, "id");
+    });
+
+    const courseCode = currentExam?.kode_mk || "IF-241";
+    const courseName =
+      currentExam?.mata_kuliah?.toUpperCase() ||
+      currentExam?.nama_ujian?.toUpperCase() ||
+      "SISTEM ANALISIS & DESAIN";
+
+    const avatarPalettes = [
+      { bg: "#e0f2fe", fg: "#0369a1", border: "#bae6fd" },
+      { bg: "#e6f0f3", fg: "#2b5c6b", border: "#bcd5dc" },
+      { bg: "#ede9fe", fg: "#6d28d9", border: "#ddd6fe" },
+      { bg: "#dcfce7", fg: "#15803d", border: "#bbf7d0" },
+      { bg: "#fef3c7", fg: "#b45309", border: "#fde68a" },
+    ];
+
+    const getInitials = (fullName: string) => {
+      const parts = fullName.replace(/,/g, " ").trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return "M";
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+    };
 
     return (
       <section className="management-panel">
-        <div className="management-toolbar" style={{ flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <p className="section-kicker">PESERTA UJIAN, TAMBAH WAKTU &amp; PENILAIAN (TC-27, TC-28, TC-34, TC-40, TC-42)</p>
-            <h2>{participants.length} Mahasiswa Terdaftar</h2>
-            <p>Hanya peserta terdaftar yang dapat memulai ujian. Dosen dapat menambah waktu (+5m), menilai esai, &amp; mempublikasikan hasil.</p>
+        {/* Header Toolbar Dinamis Mengikuti Mata Kuliah / Ujian Aktif */}
+        <div className="management-toolbar" style={{ flexWrap: "wrap", gap: "14px", alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: "280px" }}>
+            <p className="section-kicker">
+              {courseCode} · {courseName} — KELOLA PESERTA &amp; WAKTU (TC-27, TC-28, TC-34, TC-40, TC-42)
+            </p>
+            <h2>
+              {examParticipants.length} Mahasiswa Terdaftar — {currentExam?.nama_ujian || "Pilih Ujian"}
+            </h2>
+            <p>
+              Hanya peserta terdaftar pada ujian <strong>{currentExam?.nama_ujian}</strong> yang dapat memulai sesi ujian (TC-34). Dosen dapat menambah waktu (+5m), menilai esai, &amp; mempublikasikan hasil.
+            </p>
           </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
             <button
+              type="button"
               className="button secondary"
               onClick={() => handleAddExtraTime()}
-              title="Tambah waktu +5 menit untuk seluruh peserta aktif (TC-42)"
+              title="Tambah waktu +5 menit untuk seluruh peserta pada ujian terpilih ini (TC-42)"
             >
               <Icon name="clock" size={16} /> +5 Menit Semua Peserta (TC-42)
             </button>
             <button
+              type="button"
               className={`button ${currentExam?.hasil_dipublikasikan ? "secondary" : "primary"}`}
               onClick={handleTogglePublish}
             >
@@ -2809,40 +4035,10 @@ function LecturerModule({ active }: { active: string }) {
           </div>
         </div>
 
-        {/* Form Tambah Peserta Baru (TC-34) */}
-        <form
-          onSubmit={handleAddParticipant}
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginBottom: "16px",
-            flexWrap: "wrap",
-            background: "#f8fafc",
-            padding: "12px",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <input
-            value={newNim}
-            onChange={(e) => setNewNim(e.target.value)}
-            placeholder="Masukkan NIM (contoh: 105022410099)"
-            required
-            style={{ flex: 1, minWidth: "180px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-          />
-          <input
-            value={newStudentName}
-            onChange={(e) => setNewStudentName(e.target.value)}
-            placeholder="Nama Mahasiswa (opsional)"
-            style={{ flex: 1, minWidth: "180px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-          />
-          <button className="button primary" type="submit">
-            <Icon name="plus" size={17} /> Tambah Peserta
-          </button>
-        </form>
-
+        {/* Notifikasi Sukses Operasi Peserta / Waktu / Publikasi */}
         {participantMsg && (
           <div
+            role="status"
             style={{
               background: "#f0fdf4",
               border: "1px solid #86efac",
@@ -2850,6 +4046,7 @@ function LecturerModule({ active }: { active: string }) {
               padding: "10px 14px",
               borderRadius: "8px",
               fontSize: "13px",
+              fontWeight: 500,
               marginBottom: "14px",
             }}
           >
@@ -2857,87 +4054,791 @@ function LecturerModule({ active }: { active: string }) {
           </div>
         )}
 
-        <div className="data-table">
-          <div className="table-row participants table-head">
-            <span>NIM</span>
-            <span>Nama</span>
-            <span>Status Sesi</span>
-            <span>Nilai Akhir</span>
-            <span>Aksi Dosen</span>
-          </div>
-          {participants.map((item) => {
-            const mhsSession = sessions.find((s: any) => s.nim === item.nim);
-            const statusText = mhsSession ? mhsSession.status_ujian : "Terdaftar";
-            const scoreText =
-              mhsSession?.total_nilai !== null && mhsSession?.total_nilai !== undefined
-                ? `${mhsSession.total_nilai}`
-                : "Belum dinilai";
+        {/* Panel Filter Utama: Dropdown Pilih Mata Kuliah / Ujian, Pencarian Cepat, dan Urutan (Sorting A-Z) */}
+        <div
+          style={{
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            padding: "16px",
+            marginBottom: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            {/* 1. Dropdown Pemilih Mata Kuliah & Ujian (Filter Utama) */}
+            <div style={{ minWidth: "280px", flex: "1 1 320px" }}>
+              <label
+                htmlFor="participant-exam-select"
+                style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "6px" }}
+              >
+                Pilih Mata Kuliah / Ujian (Filter Utama):
+              </label>
+              <select
+                id="participant-exam-select"
+                aria-label="Pilih Mata Kuliah atau Ujian"
+                value={selectedExamId}
+                onChange={(e) => {
+                  setSelectedExamId(e.target.value);
+                  setParticipantSearch("");
+                  setConfirmDeleteParticipant(null);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: "8px",
+                  border: "1.5px solid #0284c7",
+                  background: "#f0f9ff",
+                  fontWeight: 600,
+                  color: "#0369a1",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                {uniqueExams.map((ex: ExamItem) => {
+                  const count = allParticipants.filter(
+                    (p: ParticipantItem) => (p.id_ujian || p.examId || "UJN_01") === ex.id_ujian
+                  ).length;
+                  return (
+                    <option key={ex.id_ujian} value={ex.id_ujian}>
+                      {ex.kode_mk || "IF-241"} • {ex.nama_ujian} — {count} Mahasiswa
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
 
-            return (
-              <div className="table-row participants" key={item.nim}>
-                <span>{item.nim}</span>
-                <strong>{item.nama}</strong>
-                <span>
-                  <b className={statusText === "Berlangsung" ? "status-chip live" : "status-chip"}>
-                    {statusText}
-                    {mhsSession?.tambahan_waktu ? ` (+${mhsSession.tambahan_waktu}m)` : ""}
-                  </b>
+            {/* 2. Input Pencarian Cepat Nama atau NIM Mahasiswa */}
+            <div style={{ minWidth: "240px", flex: "2 1 320px" }}>
+              <label
+                htmlFor="participant-search-input"
+                style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "6px" }}
+              >
+                Pencarian Cepat Peserta:
+              </label>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <span style={{ position: "absolute", left: "10px", color: "#94a3b8", display: "flex", alignItems: "center" }}>
+                  <Icon name="search" size={16} />
                 </span>
-                <span>
-                  <strong>{scoreText}</strong>
-                </span>
-                <span className="row-actions" style={{ gap: "6px" }}>
+                <input
+                  id="participant-search-input"
+                  type="text"
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  placeholder="Cari Nama atau NIM mahasiswa..."
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "9px 32px 9px 34px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "13px",
+                    background: "#ffffff",
+                  }}
+                />
+                {participantSearch && (
                   <button
                     type="button"
-                    onClick={() => handleAddExtraTime(item.nim, mhsSession?.id_sesi)}
-                    title="Tambah Waktu +5 Menit (TC-42)"
+                    onClick={() => setParticipantSearch("")}
                     style={{
-                      padding: "4px 8px",
-                      fontSize: "11px",
-                      borderRadius: "6px",
-                      border: "1px solid #cbd5e1",
-                      background: "#f8fafc",
+                      position: "absolute",
+                      right: "8px",
+                      background: "none",
+                      border: "none",
+                      color: "#94a3b8",
                       cursor: "pointer",
+                      fontSize: "14px",
                     }}
+                    title="Hapus pencarian"
                   >
-                    +5m Waktu
+                    ✕
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGradingModalSession(
-                        mhsSession || {
-                          id_sesi: "SES_DEMO_01",
-                          nim: item.nim,
-                          nama_mahasiswa: item.nama,
-                        }
-                      );
-                      setEssayInputScore("80");
-                    }}
-                    title="Penilaian Esai Manual (TC-40)"
-                    style={{
-                      padding: "4px 8px",
-                      fontSize: "11px",
-                      borderRadius: "6px",
-                      border: "1px solid #cbd5e1",
-                      background: "#f8fafc",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Nilai Esai
-                  </button>
-                  <button
-                    aria-label="Hapus peserta"
-                    onClick={() => handleRemoveParticipant(item.nim)}
-                    title="Hapus Peserta (TC-34)"
-                  >
-                    <Icon name="trash" size={16} />
-                  </button>
-                </span>
+                )}
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* 3. Opsi Urutkan (Sorting Nama A-Z, Z-A, NIM) & Ringkasan */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+              paddingTop: "8px",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          >
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "#64748b" }}>Urutkan:</span>
+            {[
+              { id: "nama-asc", label: "Nama (A–Z)" },
+              { id: "nama-desc", label: "Nama (Z–A)" },
+              { id: "nim-asc", label: "NIM" },
+            ].map((opt) => {
+              const isActive = participantSort === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setParticipantSort(opt.id as "nama-asc" | "nama-desc" | "nim-asc")}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: isActive ? 600 : 400,
+                    border: isActive ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                    background: isActive ? "#0284c7" : "#ffffff",
+                    color: isActive ? "#ffffff" : "#475569",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+
+            <div style={{ marginLeft: "auto", fontSize: "12px", color: "#64748b" }}>
+              Menampilkan <strong>{sortedParticipants.length}</strong> dari <strong>{examParticipants.length}</strong> mahasiswa terdaftar
+            </div>
+          </div>
         </div>
+
+        {/* Form Tambah Peserta Baru Terisolasi untuk Ujian Terpilih (TC-34) */}
+        <form
+          onSubmit={handleAddParticipant}
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginBottom: "16px",
+            flexWrap: "wrap",
+            alignItems: "center",
+            background: "#ffffff",
+            padding: "14px 16px",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginRight: "4px" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#2b5c6b",
+                background: "#e6f0f3",
+                padding: "4px 10px",
+                borderRadius: "999px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              + PESERTA BARU (TC-34)
+            </span>
+          </div>
+          <input
+            value={newNim}
+            onChange={(e) => setNewNim(e.target.value)}
+            placeholder="Masukkan NIM Mahasiswa (contoh: 105022410099)"
+            required
+            style={{
+              flex: "1 1 200px",
+              minWidth: "180px",
+              padding: "9px 12px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "13px",
+              background: "#f8fafc",
+            }}
+          />
+          <input
+            value={newStudentName}
+            onChange={(e) => setNewStudentName(e.target.value)}
+            placeholder="Nama Lengkap Mahasiswa (contoh: Marga, Nama Depan)"
+            style={{
+              flex: "1.4 1 240px",
+              minWidth: "200px",
+              padding: "9px 12px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "13px",
+              background: "#f8fafc",
+            }}
+          />
+          <button className="button primary" type="submit" style={{ whiteSpace: "nowrap" }}>
+            <Icon name="plus" size={16} /> Tambah Peserta
+          </button>
+        </form>
+
+        {/* Banner Konfirmasi Hapus Peserta Inline di Atas Tabel (jika ada mahasiswa yang dipilih untuk dihapus) */}
+        {confirmDeleteParticipant && (
+          <div
+            role="alert"
+            style={{
+              background: "#fef2f2",
+              border: "1.5px solid #f87171",
+              borderRadius: "12px",
+              padding: "14px 18px",
+              marginBottom: "16px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.08)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#991b1b", fontSize: "13.5px" }}>
+              <Icon name="warning" size={18} />
+              <span>
+                Yakin ingin menghapus <strong>{confirmDeleteParticipant.nama}</strong> (<strong>{confirmDeleteParticipant.nim}</strong>) dari peserta ujian <strong>{currentExam?.nama_ujian}</strong>?
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={() => handleRemoveParticipant(confirmDeleteParticipant.nim, confirmDeleteParticipant.nama)}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #dc2626",
+                  background: "#dc2626",
+                  color: "#ffffff",
+                  fontSize: "12.5px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Icon name="trash" size={14} /> Hapus Mahasiswa
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteParticipant(null)}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#334155",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tabel Daftar Peserta Modern & Rapi (Konsisten dengan halaman Nilai Ujian) */}
+        {sortedParticipants.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "separate",
+                borderSpacing: 0,
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                fontSize: "13px",
+                overflow: "hidden",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    background: "#f8fafc",
+                    color: "#475569",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  <th
+                    style={{
+                      padding: "13px 14px",
+                      fontWeight: 700,
+                      width: "54px",
+                      textAlign: "center",
+                      borderBottom: "1px solid #e2e8f0",
+                    }}
+                  >
+                    NO
+                  </th>
+                  <th
+                    style={{
+                      padding: "13px 14px",
+                      fontWeight: 700,
+                      borderBottom: "1px solid #e2e8f0",
+                      cursor: "pointer",
+                    }}
+                    onClick={() =>
+                      setParticipantSort(participantSort === "nama-asc" ? "nama-desc" : "nama-asc")
+                    }
+                    title="Klik untuk mengurutkan berdasarkan Nama Mahasiswa"
+                  >
+                    NAMA MAHASISWA {participantSort === "nama-asc" ? "↑" : participantSort === "nama-desc" ? "↓" : ""}
+                  </th>
+                  <th
+                    style={{
+                      padding: "13px 14px",
+                      fontWeight: 700,
+                      borderBottom: "1px solid #e2e8f0",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setParticipantSort("nim-asc")}
+                    title="Klik untuk mengurutkan berdasarkan NIM"
+                  >
+                    NIM {participantSort === "nim-asc" ? "↑" : ""}
+                  </th>
+                  <th style={{ padding: "13px 14px", fontWeight: 700, borderBottom: "1px solid #e2e8f0" }}>
+                    STATUS SESI
+                  </th>
+                  <th style={{ padding: "13px 14px", fontWeight: 700, borderBottom: "1px solid #e2e8f0" }}>
+                    NILAI AKHIR
+                  </th>
+                  <th
+                    style={{
+                      padding: "13px 16px",
+                      fontWeight: 700,
+                      textAlign: "right",
+                      borderBottom: "1px solid #e2e8f0",
+                    }}
+                  >
+                    AKSI DOSEN
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedParticipants.map((item, idx) => {
+                  const mhsSession = sessions.find((s: any) => s.nim === item.nim);
+                  const statusText = mhsSession?.status_ujian || item.status_ujian || "Terdaftar";
+                  const extraMinutes =
+                    Number(mhsSession?.tambahan_waktu || item.tambahan_waktu || 0);
+                  const finalScoreVal =
+                    mhsSession?.total_nilai !== null && mhsSession?.total_nilai !== undefined
+                      ? mhsSession.total_nilai
+                      : item.total_nilai !== null && item.total_nilai !== undefined
+                      ? item.total_nilai
+                      : null;
+                  const hasScore = finalScoreVal !== null && finalScoreVal !== undefined;
+                  const isPendingConfirm = confirmDeleteParticipant?.nim === item.nim;
+                  const palette = avatarPalettes[idx % avatarPalettes.length];
+
+                  const statusChipStyle =
+                    statusText === "Terkirim" || statusText === "Selesai"
+                      ? { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" }
+                      : statusText === "Berlangsung"
+                      ? { bg: "#ecfdf5", fg: "#047857", border: "#a7f3d0" }
+                      : statusText.includes("Dikunci")
+                      ? { bg: "#fef2f2", fg: "#b91c1c", border: "#fecaca" }
+                      : { bg: "#f1f5f9", fg: "#475569", border: "#e2e8f0" };
+
+                  return (
+                    <tr
+                      key={`${item.nim}_${selectedExamId}`}
+                      style={{
+                        background: isPendingConfirm
+                          ? "#fef2f2"
+                          : idx % 2 === 0
+                          ? "#ffffff"
+                          : "#fcfdff",
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      {/* Kolom 1: NO */}
+                      <td
+                        style={{
+                          padding: "12px 14px",
+                          borderTop: "1px solid #f1f5f9",
+                          textAlign: "center",
+                          fontWeight: 700,
+                          color: "#64748b",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-grid",
+                            placeItems: "center",
+                            width: "26px",
+                            height: "26px",
+                            borderRadius: "6px",
+                            background: "#f1f5f9",
+                            color: "#334155",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                      </td>
+
+                      {/* Kolom 2: Nama Mahasiswa + Inisial Avatar Bulat */}
+                      <td style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+                          <span
+                            style={{
+                              flexShrink: 0,
+                              width: "34px",
+                              height: "34px",
+                              borderRadius: "999px",
+                              background: palette.bg,
+                              color: palette.fg,
+                              border: `1px solid ${palette.border}`,
+                              display: "grid",
+                              placeItems: "center",
+                              fontWeight: 700,
+                              fontSize: "12.5px",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            {getInitials(item.nama)}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "13.5px" }}>
+                              {item.nama}
+                            </div>
+                            <div style={{ fontSize: "11.5px", color: "#64748b", marginTop: "1px" }}>
+                              {item.kelas || "Kelas A"} • {currentExam?.kode_mk || "IF-241"}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Kolom 3: NIM */}
+                      <td style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            fontFamily: "monospace",
+                            fontSize: "12.5px",
+                            fontWeight: 600,
+                            color: "#334155",
+                          }}
+                        >
+                          {item.nim}
+                        </span>
+                      </td>
+
+                      {/* Kolom 4: Status Sesi & Tambahan Waktu */}
+                      <td style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "4px 10px",
+                              borderRadius: "999px",
+                              fontSize: "11.5px",
+                              fontWeight: 700,
+                              background: statusChipStyle.bg,
+                              color: statusChipStyle.fg,
+                              border: `1px solid ${statusChipStyle.border}`,
+                            }}
+                          >
+                            {statusText}
+                          </span>
+                          {extraMinutes > 0 && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "3px 8px",
+                                borderRadius: "999px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                background: "#ecfdf5",
+                                color: "#047857",
+                                border: "1px solid #6ee7b7",
+                              }}
+                              title={`Waktu pengerjaan mahasiswa ini telah ditambah +${extraMinutes} menit (TC-42)`}
+                            >
+                              +{extraMinutes}m
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Kolom 5: Nilai Akhir */}
+                      <td style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9" }}>
+                        {hasScore ? (
+                          <div style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+                            <strong style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>
+                              {finalScoreVal}
+                            </strong>
+                            <span style={{ fontSize: "11px", color: "#64748b" }}>/ 100</span>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "3px 9px",
+                              borderRadius: "6px",
+                              fontSize: "11.5px",
+                              fontWeight: 600,
+                              background: "#fefce8",
+                              color: "#a16207",
+                              border: "1px solid #fef08a",
+                            }}
+                          >
+                            Belum dinilai
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Kolom 6: AKSI DOSEN (Tombol Terpisah Rapi + Konfirmasi Hapus Inline) */}
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          borderTop: "1px solid #f1f5f9",
+                          textAlign: "right",
+                        }}
+                      >
+                        {isPendingConfirm ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-end",
+                              gap: "8px",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                color: "#b91c1c",
+                                marginRight: "4px",
+                              }}
+                            >
+                              Yakin ingin menghapus {item.nama.split(",")[0]} ({item.nim})?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveParticipant(item.nim, item.nama)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                border: "1px solid #dc2626",
+                                background: "#dc2626",
+                                color: "#ffffff",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Icon name="trash" size={13} /> Hapus Mahasiswa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteParticipant(null)}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                                color: "#334155",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-end",
+                              gap: "8px",
+                              flexWrap: "nowrap",
+                            }}
+                          >
+                            {/* 1. Tombol +5m Waktu (TC-42) */}
+                            <button
+                              type="button"
+                              onClick={() => handleAddExtraTime(item.nim, mhsSession?.id_sesi)}
+                              title="Tambah Waktu +5 Menit untuk mahasiswa ini (TC-42)"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 11px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                borderRadius: "8px",
+                                border: extraMinutes > 0 ? "1px solid #10b981" : "1px solid #cbd5e1",
+                                background: extraMinutes > 0 ? "#ecfdf5" : "#f8fafc",
+                                color: extraMinutes > 0 ? "#047857" : "#334155",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Icon name="clock" size={13} />
+                              <span>+5m Waktu</span>
+                              {extraMinutes > 0 && (
+                                <span
+                                  style={{
+                                    padding: "1px 6px",
+                                    borderRadius: "999px",
+                                    background: "#10b981",
+                                    color: "#ffffff",
+                                    fontSize: "10.5px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  +{extraMinutes}m
+                                </span>
+                              )}
+                            </button>
+
+                            {/* 2. Tombol Nilai Esai (TC-40) */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGradingModalSession(
+                                  mhsSession || {
+                                    id_sesi: `SES_${selectedExamId}_${item.nim}`,
+                                    id_ujian: selectedExamId,
+                                    nim: item.nim,
+                                    nama_mahasiswa: item.nama,
+                                  }
+                                );
+                                setEssayInputScore(
+                                  mhsSession?.essayScores?.SOAL_06 !== undefined
+                                    ? String(mhsSession.essayScores.SOAL_06)
+                                    : "80"
+                                );
+                              }}
+                              title="Penilaian Esai Manual (TC-40)"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 11px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                borderRadius: "8px",
+                                border: "1px solid #bae6fd",
+                                background: "#f0f9ff",
+                                color: "#0369a1",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Icon name="edit" size={13} />
+                              <span>Nilai Esai</span>
+                            </button>
+
+                            {/* 3. Tombol Reset Sesi Perangkat (TC-05 Emergency Release) */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await resetUserDeviceSessionApi(item.nim);
+                                setParticipantMsg(
+                                  `Kunci sesi perangkat untuk ${item.nama} (${item.nim}) berhasil direset (TC-05). Mahasiswa kini dapat login ulang.`
+                                );
+                                setTimeout(() => setParticipantMsg(""), 4000);
+                              }}
+                              title="Reset Kunci Sesi Perangkat Mahasiswa (TC-05)"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 11px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                borderRadius: "8px",
+                                border: "1px solid #fde68a",
+                                background: "#fffbeb",
+                                color: "#b45309",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Icon name="shield" size={13} />
+                              <span>Reset Sesi</span>
+                            </button>
+
+                            {/* 4. Tombol Hapus dengan Konfirmasi Inline (TC-34) */}
+                            <button
+                              type="button"
+                              aria-label={`Hapus peserta ${item.nama}`}
+                              onClick={() =>
+                                setConfirmDeleteParticipant({ nim: item.nim, nama: item.nama })
+                              }
+                              title="Hapus Peserta dari ujian ini (TC-34)"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "6px 11px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                borderRadius: "8px",
+                                border: "1px solid #fecaca",
+                                background: "#fef2f2",
+                                color: "#dc2626",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Icon name="trash" size={13} />
+                              <span>Hapus</span>
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "36px 20px",
+              textAlign: "center",
+              background: "#f8fafc",
+              borderRadius: "12px",
+              border: "1px dashed #cbd5e1",
+              margin: "12px 0",
+            }}
+          >
+            <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "10px" }}>
+              {participantSearch
+                ? `Tidak ada peserta yang cocok dengan kata kunci "${participantSearch}" pada ujian "${currentExam?.nama_ujian}".`
+                : `Belum ada peserta terdaftar pada mata kuliah / ujian "${currentExam?.nama_ujian}".`}
+            </p>
+            {participantSearch && (
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setParticipantSearch("")}
+              >
+                Reset Pencarian
+              </button>
+            )}
+          </div>
+        )}
 
         {gradingModalSession && (
           <Modal labelledBy="grade-essay-title" onClose={() => setGradingModalSession(null)}>
@@ -2974,9 +4875,41 @@ function LecturerModule({ active }: { active: string }) {
                   required
                 />
               </label>
-              <button className="button primary wide" type="submit">
-                <Icon name="save" size={17} /> Simpan &amp; Akumulasikan Nilai Akhir
-              </button>
+              <div
+                style={{
+                  background: "#f0fdf4",
+                  border: "1px solid #86efac",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  fontSize: "12.5px",
+                  color: "#166534",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>
+                  Akumulasi Nilai Akhir (Objektif {gradingModalSession.objective_earned ?? 70} + Esai{" "}
+                  {Math.round((Math.max(0, Math.min(100, Number(essayInputScore) || 0)) / 100) * 30)}):
+                </span>
+                <strong style={{ fontSize: "15px" }}>
+                  {(gradingModalSession.objective_earned ?? 70) +
+                    Math.round((Math.max(0, Math.min(100, Number(essayInputScore) || 0)) / 100) * 30)}{" "}
+                  / 100
+                </strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setGradingModalSession(null)}
+                >
+                  Batal
+                </button>
+                <button className="button primary" type="submit">
+                  <Icon name="save" size={17} /> Simpan &amp; Akumulasikan Nilai Akhir
+                </button>
+              </div>
             </form>
           </Modal>
         )}
@@ -3057,7 +4990,7 @@ function LecturerModule({ active }: { active: string }) {
                   cursor: "pointer",
                 }}
               >
-                {(dbState.exams || []).map((exam: ExamItem) => (
+                {uniqueExams.map((exam: ExamItem) => (
                   <option key={exam.id_ujian} value={exam.id_ujian}>
                     {exam.kode_mk || "IF-301"} • {exam.nama_ujian}
                   </option>
@@ -4038,7 +5971,7 @@ function LecturerModule({ active }: { active: string }) {
               }}
             >
               <option value="ALL">Semua Ujian</option>
-              {(dbState.exams || []).map((exam: ExamItem) => (
+              {uniqueExams.map((exam: ExamItem) => (
                 <option key={exam.id_ujian} value={exam.id_ujian}>
                   {exam.kode_mk || "IF-301"} • {exam.nama_ujian}
                 </option>
@@ -4171,12 +6104,64 @@ function LecturerDashboard({
 }) {
   const lecturer = formatLecturerName(currentUser);
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [previousActiveNav, setPreviousActiveNav] = useState("Dashboard");
+  const [timeGreeting, setTimeGreeting] = useState(() => getDynamicTimeGreeting());
   const [dbState, setDbState] = useState(() => loadLocalDB());
   const [quickMsg, setQuickMsg] = useState("");
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTimeGreeting(getDynamicTimeGreeting());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const handleNavigateTab = (nextTab: string) => {
+    if (nextTab !== activeNav) {
+      setPreviousActiveNav(activeNav);
+      setActiveNav(nextTab);
+    }
+  };
+
+  const handleBackToPreviousTab = () => {
+    const target = previousActiveNav && previousActiveNav !== activeNav ? previousActiveNav : "Dashboard";
+    setActiveNav(target);
+  };
+
+  useEffect(() => {
     setDbState(loadLocalDB());
+    fetchStateFromBackend().then(() => {
+      setDbState(loadLocalDB());
+    });
   }, [activeNav]);
+
+  // Sinkronisasi Real-Time State Backend di Portal Dosen
+  useEffect(() => {
+    const onStateUpdated = () => setDbState(loadLocalDB());
+    const onFocus = () => {
+      fetchStateFromBackend();
+    };
+    window.addEventListener("xunklab_state_updated", onStateUpdated);
+    window.addEventListener("focus", onFocus);
+    const pollTimer = window.setInterval(() => {
+      fetchStateFromBackend();
+    }, 4000);
+    return () => {
+      window.removeEventListener("xunklab_state_updated", onStateUpdated);
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(pollTimer);
+    };
+  }, []);
+
+  // TC-05: Kirim heartbeat sesi login Dosen setiap 10 detik
+  useEffect(() => {
+    const id = currentUser?.username || "george";
+    sendAuthHeartbeatApi(id);
+    const hbTimer = window.setInterval(() => {
+      sendAuthHeartbeatApi(id);
+    }, 10000);
+    return () => window.clearInterval(hbTimer);
+  }, [currentUser?.username]);
 
   const handleQuickAdd5Min = async (idUjian: string) => {
     const res = await addExtraTimeForExamOrSession(idUjian, undefined, 5);
@@ -4200,7 +6185,7 @@ function LecturerDashboard({
               <button
                 className={activeNav === label ? "active" : ""}
                 key={label}
-                onClick={() => setActiveNav(label)}
+                onClick={() => handleNavigateTab(label)}
               >
                 <Icon name={icon} size={19} /> <span>{label}</span>
                 {label === "Tinjau Log Pelanggaran" && <b>{violationsCount}</b>}
@@ -4239,14 +6224,14 @@ function LecturerDashboard({
         <div className="lecturer-top">
           <div>
             <p className="section-kicker">RINGKASAN AKADEMIK · PORTAL DOSEN</p>
-            <h1>{activeNav === "Dashboard" ? `Selamat pagi, ${lecturer.shortName}.` : activeNav}</h1>
+            <h1>{activeNav === "Dashboard" ? `${timeGreeting}, ${lecturer.shortName}.` : activeNav}</h1>
             <p>
               {activeNav === "Dashboard"
                 ? "Pantau dan kelola seluruh aktivitas ujian dari satu tempat."
                 : "Modul ini siap digunakan untuk pengelolaan aktivitas akademik."}
             </p>
           </div>
-          <button className="button primary" onClick={() => setActiveNav("Atur Ujian")}>
+          <button className="button primary" onClick={() => handleNavigateTab("Atur Ujian")}>
             <Icon name="plus" size={18} /> Buat / Atur Ujian
           </button>
         </div>
@@ -4272,7 +6257,7 @@ function LecturerDashboard({
             <button
               className={activeNav === label ? "active" : ""}
               key={label}
-              onClick={() => setActiveNav(label)}
+              onClick={() => handleNavigateTab(label)}
             >
               <Icon name={icon} size={18} />
               <span>{label.replace("Kelola ", "").replace("Tinjau ", "")}</span>
@@ -4281,6 +6266,13 @@ function LecturerDashboard({
         </div>
 
         {activeNav === "Dashboard" ? (
+          (() => {
+            const dashboardExams = deduplicateExams(
+              dbState.exams || [],
+              dbState.questions || [],
+              dbState.participants || []
+            ).exams;
+            return (
           <>
             <section className="stats-grid">
               <article>
@@ -4289,7 +6281,7 @@ function LecturerDashboard({
                 </span>
                 <div>
                   <p>Total Ujian</p>
-                  <strong>{(dbState.exams || []).length}</strong>
+                  <strong>{dashboardExams.length}</strong>
                   <small>PIN Aktif: 483920</small>
                 </div>
               </article>
@@ -4332,11 +6324,11 @@ function LecturerDashboard({
                     <h2>Sedang Berlangsung</h2>
                     <p>Pantau ujian secara real-time &amp; tambah waktu peserta.</p>
                   </div>
-                  <button onClick={() => setActiveNav("Kelola Peserta")}>
+                  <button onClick={() => handleNavigateTab("Kelola Peserta")}>
                     Kelola Peserta <Icon name="arrow" size={16} />
                   </button>
                 </div>
-                {(dbState.exams || []).slice(0, 2).map((item: ExamItem) => (
+                {dashboardExams.slice(0, 2).map((item: ExamItem) => (
                   <article className="running-exam" key={item.id_ujian}>
                     <span className="live-pulse">
                       <i />
@@ -4367,7 +6359,7 @@ function LecturerDashboard({
                       </button>
                       <button
                         className="monitor-button"
-                        onClick={() => setActiveNav("Tinjau Log Pelanggaran")}
+                        onClick={() => handleNavigateTab("Tinjau Log Pelanggaran")}
                       >
                         Pantau
                       </button>
@@ -4381,11 +6373,11 @@ function LecturerDashboard({
                     <h2>Jadwal Ujian Terdaftar</h2>
                     <p>Pengaturan jadwal aktif &amp; batas waktu.</p>
                   </div>
-                  <button aria-label="Lihat semua" onClick={() => setActiveNav("Atur Ujian")}>
+                  <button aria-label="Lihat semua" onClick={() => handleNavigateTab("Atur Ujian")}>
                     <Icon name="arrow" size={17} />
                   </button>
                 </div>
-                {(dbState.exams || []).map((item: ExamItem, idx: number) => (
+                {dashboardExams.map((item: ExamItem, idx: number) => (
                   <article className="upcoming-item" key={item.id_ujian}>
                     <span className="date-box">
                       <strong>0{idx + 1}</strong>
@@ -4402,8 +6394,10 @@ function LecturerDashboard({
               </div>
             </section>
           </>
+            );
+          })()
         ) : (
-          <LecturerModule active={activeNav} />
+          <LecturerModule active={activeNav} onNavigateBack={handleBackToPreviousTab} />
         )}
       </main>
     </div>
@@ -5172,7 +7166,12 @@ export default function App({
   };
 
   const logout = () => {
-    clearAuthToken();
+    const identifier =
+      currentUser?.detail?.nim ||
+      currentUser?.detail?.nip ||
+      currentUser?.username ||
+      "";
+    logoutApi(identifier);
     sessionStorage.removeItem("activeExamStarted");
     sessionStorage.removeItem("activeExamSessionId");
     setCurrentUser(null);

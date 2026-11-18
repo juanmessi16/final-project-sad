@@ -1,219 +1,265 @@
 # xUnklab (SiLab Exam System)
 
-Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, Universitas Klabat** yang membantu Dosen dan Mahasiswa dalam menyelenggarakan ujian daring secara aman, transparan, dan terstruktur dengan proteksi **anti-curang tanpa kamera** agar integritas akademik tetap terjaga.
+Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, Universitas Klabat** yang membantu **Dosen** dan **Mahasiswa** menyelenggarakan serta mengikuti ujian daring secara aman, tersinkronisasi terpusat, dan terstruktur dengan proteksi **anti-curang tanpa kamera** agar integritas akademik tetap terjaga.
 
-![Halaman utama](![alt text](screenshot/image.png))
+![Halaman utama](media/image.png)
 
 | | |
 |---|---|
-| **Mata Kuliah** | System Analysis and Design — Fakultas Ilmu Komputer, Universitas Klabat |
+| **Mata kuliah** | System Analysis and Design — Fakultas Ilmu Komputer, Universitas Klabat |
 | **Kelompok** | Final Project SAD (Informatika & Sistem Informasi) |
-| **Objek / Studi Kasus** | Fakultas Ilmu Komputer (FILKOM), Universitas Klabat |
-| **Dosen Pengampu** | George M. W. Tangka, S.Kom., MBA |
+| **Objek / studi kasus** | Fakultas Ilmu Komputer (FILKOM), Universitas Klabat |
+| **Dosen pengampu** | George M. W. Tangka, S.Kom., MBA |
 | **Model SDLC** | Prototype / Agile Incremental |
 | **Dokumen SRS** | [docs/SAD_FP_Kelompok_SRS.pdf](docs/) |
-| **Prototipe UI** | [Figma Prototype - xUnklab Exam System](https://www.figma.com/make/gtLhi8jZA8qXw9if59lfFK/UI-xUnklab--SAD-?t=X5eCdlqS8fQNk7gD-1/) |
-
----
+| **Prototipe UI** | [Figma Prototype — xUnklab Exam System](https://www.figma.com/make/gtLhi8jZA8qXw9if59lfFK/UI-xUnklab--SAD-?t=X5eCdlqS8fQNk7gD-1/) |
 
 ## Anggota Kelompok
 
-| No | Nama | NIM | Peran | Kontribusi Utama |
+| No | Nama | NIM | Peran | Kontribusi utama |
 |----|------|-----|-------|------------------|
-| 1 | Tulengkey, Juan Messi Septhian | 105022410021 | Project Manager & Lead Developer | Rencana kerja, arsitektur sistem, repository, integrasi backend dan alur ujian (UC-01 s.d. UC-05) |
-| 2 | Sumual, Valentino | 105022410095 | System Analyst & UI/UX Designer | Elisitasi kebutuhan, penyusunan SRS, spesifikasi anti-curang, desain UI desktop & web |
-| 3 | Tuwaidan, Jeniffer Diana | 105022510107 | System Designer & Frontend Developer | Use Case diagram, Activity & Sequence diagram, integrasi komponen antarmuka React |
-| 4 | Sahetapy, Wilman Valentino | 105022410007 | Backend Developer | Perancangan Database MySQL, REST API Express, migrasi, dan trigger proteksi log |
-| 5 | Laluyan, Matthew Arnold M | 105022510475 | QA & Dokumentasi | Pembuatan skenario kasus uji (53 Test Case), pengujian integrasi alur kerja, dan dokumentasi |
-
----
+| 1 | Tulengkey, Juan Messi Septhian | 105022410021 | Project manager & Lead developer | Rencana kerja, arsitektur sistem, repository, integrasi backend & alur ujian (UC-01 s.d. UC-05) |
+| 2 | Sumual, Valentino | 105022410095 | System analyst & UI/UX designer | Elisitasi kebutuhan, penyusunan SRS, spesifikasi anti-curang, desain UI web |
+| 3 | Tuwaidan, Jeniffer Diana | 105022510107 | System designer & Frontend developer | Use Case diagram, Activity & Sequence diagram, integrasi antarmuka React & inline form cards |
+| 4 | Sahetapy, Wilman Valentino | 105022410007 | Backend developer | Perancangan database MySQL, REST API Express, session lock terpusat, & trigger proteksi log |
+| 5 | Laluyan, Matthew Arnold M | 105022510475 | QA dan dokumentasi | Pembuatan 53 skenario kasus uji (TC-01 s.d. TC-53), pengujian integrasi alur kerja, & README |
 
 ## Latar Belakang
 
-- **Masalah:** Pelaksanaan ujian daring sering kali rentan terhadap kecurangan (membuka tab browser lain untuk mencari jawaban, menyalin teks pertanyaan ke mesin pencari/AI, atau berbagi akun), sementara penggunaan kamera pengawas sering memicu resistensi privasi dan kendala bandwidth internet mahasiswa.
-- **Kondisi Saat Ini:** Pembagian soal ujian konvensional atau LMS standar belum memiliki proteksi aktif terhadap perpindahan tab, penguncian layar penuh, pembatasan jaringan kampus, maupun manipulasi papan klip (*copy-paste*).
-- **Tujuan Sistem:** Membangun platform ujian web terpadu yang mengimplementasikan deteksi kecurangan berbasis event peramban (*Fullscreen API*, *Page Visibility API*, *window blur*, dan pencegahan *copy-paste*), pengacakan soal & opsi jawaban, *auto-save* jawaban berkala, pencatatan bukti pelanggaran *append-only* (*immutable*), serta portal penilaian terintegrasi untuk Dosen dan Mahasiswa.
+- **Masalah:** Pelaksanaan ujian daring sering rentan terhadap kecurangan (berpindah tab browser, menyalin teks soal ke mesin pencari/AI, atau berbagi akun pada dua perangkat sekaligus), sementara penggunaan kamera pengawas memicu kendala privasi dan bandwidth mahasiswa.
+- **Kondisi saat ini:** LMS atau formulir ujian konvensional umumnya belum memiliki proteksi aktif terhadap perpindahan tab, penguncian layar penuh (*fullscreen*), pembatasan IP jaringan kampus, *single-device lock*, maupun sinkronisasi status real-time antar perangkat.
+- **Tujuan sistem:** Membangun platform ujian web terpadu dengan deteksi kecurangan berbasis event browser (*Fullscreen API*, *Page Visibility API*, *window blur*, pemblokiran *clipboard*), pengacakan soal & opsi jawaban, *auto-save* berkala, log pelanggaran *append-only* (*immutable*), serta sinkronisasi state terpusat di Backend Server (*Single Source of Truth*).
+- **Pengguna (aktor):**
+  - **Mahasiswa:** Mengikuti ujian dengan verifikasi PIN 6 digit, mengerjakan soal pada layar penuh anti-curang, memulihkan sesi apabila terputus, melihat resi pengiriman, dan memantau nilai setelah dipublikasikan.
+  - **Dosen:** Mengelola bank soal (inline form card bergaya Google Forms), mengatur jadwal ujian (*alarm-style date & time picker*), mengelola peserta per mata kuliah, menambah waktu `+5 menit` real-time, menilai jawaban esai, meninjau log pelanggaran, dan mempublikasikan nilai.
 
----
+## Fitur Utama
 
-## Fitur Utama & Arsitektur Portal
+| No | Fitur | Aktor | Use case | Kebutuhan |
+|----|-------|-------|----------|-----------|
+| 1 | Login multi-peran, status akun terkunci, & *Single-Device Lock* | Mahasiswa, Dosen | UC-01 | FR-01, NFR-06 |
+| 2 | Verifikasi PIN 6 digit, cek jadwal, & pembatasan IP jaringan kampus | Mahasiswa | UC-02 | FR-02, FR-03 |
+| 3 | Pengerjaan ujian layar penuh, *auto-save*, & deteksi anti-curang tanpa kamera | Mahasiswa | UC-03, UC-04 | FR-04 s.d. FR-07 |
+| 4 | Lihat nilai terpublikasi & resi bukti pengiriman resmi | Mahasiswa | UC-05 | FR-08 |
+| 5 | Kelola Bank Soal (Inline Form Card & isolasi per ujian) | Dosen | UC-06 | FR-09, FR-10 |
+| 6 | Atur Ujian & Buat Ujian Baru (*Alarm Date-Time Picker* & anti-duplikasi) | Dosen | UC-07 | FR-11, FR-12 |
+| 7 | Kelola Peserta (filter per mata kuliah, tambah waktu `+5m`, konfirmasi inline) | Dosen | UC-08 | FR-13, FR-14 |
+| 8 | Penilaian Esai manual, akumulasi Nilai Akhir, log pelanggaran *immutable*, & publikasi nilai | Dosen | UC-09, UC-10 | FR-15 s.d. FR-18 |
 
-### 1. Autentikasi, Otorisasi & Keamanan Sesi
-- **Login Multi-Peran Terpisah:**
-  - **Portal Mahasiswa:** Login menggunakan **Username / NIM** dan password.
-  - **Portal Dosen:** Login menggunakan **Username / NIP** dan password.
-- **Keamanan Password & Token:** Password disimpan menggunakan hashing **bcrypt**, JWT memiliki masa kedaluwarsa maksimal **3 jam**, proteksi **RBAC** (`403 Forbidden` jika mahasiswa mengakses rute dosen), serta middleware redirect `http://` ke `https://` pada mode produksi.
-- **Status Akun Terkunci (`status_akun`):** Akun dengan status `Terkunci` atau nonaktif ditolak masuk secara otomatis.
-- **Single Active Device / Anti-Multi Login:** Satu akun mahasiswa hanya dapat menjalankan sesi ujian aktif pada satu perangkat/browser dalam waktu bersamaan (dilengkapi opsi pemulihan paksa sesi oleh mahasiswa atau pengawas jika perangkat berpindah).
+### Pembaruan Terbaru Sistem
+- **Sinkronisasi Terpusat (Single Source of Truth):** State ujian, soal, peserta, sesi, dan log pelanggaran tersinkronisasi terpusat melalui `GET /api/state` & `POST /api/state/sync` (dengan persistensi `backend/data/session_sync_store.json`) beserta *cascade delete* saat ujian dihapus.
+- **Anti-Duplikasi Ujian (`deduplicateExams`):** Mencegah data ujian ganda berdasarkan `id_ujian` maupun kombinasi `nama_ujian + kode_mk`.
+- **Single-Device Login & Exam Lock (TC-05):** Pelacakan `active_user_sessions` (`device_id` + `last_heartbeat`) dan `active_exam_sessions` di backend menolak login dari perangkat kedua selama sesi perangkat pertama masih aktif, serta melepas kunci otomatis saat logout.
+- **Inline Form Cards (Tanpa Pop-up Modal):** Form **Tambah/Edit Soal** di *Kelola Bank Soal* dan **Buat Ujian Baru** tampil menyatu penuh (`width: 100%`) bergaya Google Forms dengan opsi jawaban A–D vertikal.
+- **Alarm-Style Date & Time Picker (TC-08 & TC-31):** Pemilih tanggal (`type="date"`), dropdown Jam (`00–23`) & Menit (`00–59`), serta tombol preset cepat (`Mulai Sekarang`, `Mulai +5 Menit Lagi`, `+90 Menit`, `+7 Hari`, `Set Sudah Berakhir -1 Menit Lalu`) pada layout 2 kolom lebar.
+- **Sapaan Waktu Dinamis (*Real-Time Greeting*):** Dashboard Mahasiswa dan Dashboard Dosen menampilkan sapaan dinamis mengikuti jam perangkat (`Selamat pagi/siang/sore/malam`).
 
-### 2. Portal Mahasiswa (Sidebar Navigation)
-Portal Mahasiswa kini menggunakan tata letak **2 kolom dengan Sidebar Kiri Tetap** yang konsisten dengan Portal Dosen (sidebar otomatis disembunyikan saat berada di layar pengerjaan soal layar penuh):
-- **Menu `Ikut Ujian`:**
-  - Filter status ujian (*Semua Ujian*, *Tersedia / Aktif*, *Akan Datang*, *Selesai / Terkunci*).
-  - Banner notifikasi jadwal ujian terdaftar & ikon lonceng notifikasi.
-  - Simulasi & validasi **IP Whitelist Jaringan Kampus**.
-  - Validasi **PIN 6 digit** di sisi backend tanpa pernah mengekspos `pin` pada payload JSON maupun UI mahasiswa.
-  - Validasi batas jadwal ujian (`waktu_mulai` & `waktu_selesai`) dan akses langsung **Resi Pengiriman Ujian** untuk ujian yang sudah disubmit.
-- **Menu `Lihat Nilai`:**
-  - 4 kartu ringkasan statistik mahasiswa (*Total Ujian Diikuti*, *Sudah Dipublikasikan*, *Menunggu Penilaian / Publikasi*, *Rata-rata Nilai Akhir*).
-  - Daftar hasil ujian dengan proteksi status: badge **`Belum dinilai`** jika esai belum dikoreksi dosen, **`Menunggu Publikasi Dosen`** jika nilai belum dipublikasikan, dan **`Dipublikasikan`** beserta rincian **Skor Objektif**, **Skor Esai**, **Penalti Pelanggaran**, **Total Nilai Akhir**, dan **Grade Huruf (`A` s.d. `E`)**.
-  - Modal **Resi Bukti Pengiriman Resmi** (Nama, NIM, Nama Ujian, ID Sesi, Waktu Kirim, Status Pengiriman).
-- **Layar Pengerjaan Soal (`ExamPage`):**
-  - Wajib **Mode Layar Penuh (Fullscreen)**, deteksi pindah tab (`visibilitychange` / `blur`), pemblokiran `copy`, `cut`, `paste`, klik kanan, dan shortcut DevTools.
-  - Eskalasi peringatan bertingkat (peringatan ke-1 & ke-2, lalu **penguncian sesi paksa** dan auto-submit pada pelanggaran ke-3).
-  - Pengacakan urutan soal & opsi jawaban (*Fisher-Yates Shuffle*), *auto-save* jawaban, sinkronisasi timer server, dan submit otomatis saat waktu habis (`00:00`).
+## Screenshot
 
-### 3. Portal Dosen (Sidebar Navigation)
-- **`Dashboard`:** Ringkasan metrik ujian, daftar ujian berlangsung, dan tombol cepat **`+5m Waktu`**.
-- **`Kelola Bank Soal`:** Selector/filter ujian aktif (`exam_id`), isolasi soal per ujian, filter tipe soal (*Pilihan Ganda*, *Benar/Salah*, *Isian Singkat*, *Esai*), pencarian cepat, serta CRUD soal dengan validasi wajib isi kunci jawaban untuk soal objektif.
-- **`Atur Ujian`:** Konfigurasi nama ujian, jadwal mulai & selesai, durasi, PIN 6 digit, maks percobaan, batas toleransi pelanggaran, acak soal & opsi, serta toggle pembatasan IP jaringan kampus.
-- **`Kelola Peserta`:** Tambah/hapus peserta terdaftar per ujian dan tambah waktu `+5 menit` per mahasiswa atau seluruh peserta secara real-time.
-- **`Nilai Ujian`:**
-  - Selector ujian & 5 kartu ringkasan statistik (*Total Mengumpulkan*, *Sudah Dinilai*, *Belum Dinilai*, *Rata-rata Nilai Akhir*, *Status Publikasi*).
-  - Tabel rekapitulasi nilai mahasiswa (*Nilai Objektif Otomatis*, *Nilai Esai*, *Penalti Pelanggaran*, *Total Nilai Akhir*, *Status Penilaian*) dengan badge **`Perlu Dinilai`** yang dapat diklik langsung.
-  - **Modal Penilaian Esai & Penetapan Nilai Akhir:** Dilengkapi 2 sub-tab (*1. Penilaian Jawaban Esai & Nilai Akhir* dan *2. Rincian Jawaban Objektif*), input skor `0–100`, tombol nilai cepat (`0`, `50`, `75`, `80`, `100`), kartu kalkulasi *live preview*, dan sticky footer.
-  - Tombol toggle **Publikasikan Hasil Ujian / Tarik Publikasi (Draft)** yang langsung tersinkronisasi ke Portal Mahasiswa.
-- **`Tinjau Log Pelanggaran`:** Daftar log pelanggaran bersifat *append-only / immutable* (dilindungi trigger SQL & HTTP `403` dari modifikasi/penghapusan) beserta dropdown penetapan sanksi oleh dosen (*Peringatan*, *Pengurangan Nilai -20 Poin*, *Diskualifikasi Nilai 0*).
+**[UC-01] Login Portal Dosen & Portal Mahasiswa**
 
----
+![UC-01 Login Dosen](media/%5BUC-01%5D-login-dosen.png)
+
+![UC-01 Login Mahasiswa](media/%5BUC-01%5D-login-mhs.png)
+
+**[UC-02] Verifikasi PIN Ujian 6 Digit (Mahasiswa)**
+
+![UC-02 Verifikasi PIN](media/%5BUC-02%5D-PIN.png)
+
+**[UC-05] Lihat Hasil Ujian & Status Penilaian**
+
+![UC-05 Lihat Hasil Ujian](media/%5BUC-05%5D-lihat-hasil-ujian.png)
+
+![UC-05 Detail Hasil Ujian](media/%5BUC-05%5D-lihat-hasil-ujiann.png)
+
+**[UC-06] Kelola Bank Soal & Tambah Soal (Inline Form Card)**
+
+![UC-06 Kelola Bank Soal](media/%5BUC-06%5D-kelola-soal.png)
+
+![UC-06 Tambah Soal Inline](media/%5BUC-06%5D-kelola-soal%28tambah%29.png)
+
+**[UC-07] Atur Ujian & Validasi Pengaturan**
+
+![UC-07 Atur Ujian](media/%5BUC-07%5D-atur_ujian.png)
+
+**[UC-08] Kelola Peserta Ujian & Konfirmasi Hapus Inline**
+
+![UC-08 Kelola Peserta Ujian](media/%5BUC-08%5D-kelola-peserta-ujian.png)
+
+![UC-08 Konfirmasi Hapus Peserta](media/%5BUC-08%5D-kelola-peserta-ujian%28hapus%29.png)
+
+**[UC-09] Tinjau Log Pelanggaran (Append-Only / Immutable)**
+
+![UC-09 Tinjau Log Pelanggaran](media/%5BUC-09%5D-tinjau-log-pelanggaran.png)
+
+**[UC-10] Tetapkan Keputusan & Sanksi Pelanggaran**
+
+![UC-10 Tetapkan Keputusan Pelanggaran](media/%5BUC-10%5D-tetapkan-keputusan-pelanggaran.png)
+
+**[UC-19] Menerima Bukti Pengiriman Ujian (Resi Resmi)**
+
+![UC-19 Menerima Bukti Ujian](media/%5BUC-19%5D-menerima-bukti-ujian.png)
 
 ## Teknologi
 
 | Lapisan | Teknologi | Versi |
-|---|---|---|
-| Front-end Web | React, TypeScript, Vite, Lucide React | React 19, Vite 8 |
-| Front-end Python (Alternatif) | Python Desktop (Tkinter/TTK) & SimpleHTTP | Python 3.10+ |
-| Back-end API | Node.js, Express.js, Helmet, CORS, bcryptjs, JWT | Node 20+, Express 4.19+ |
-| Database | MySQL 8.0 (InnoDB, `utf8mb4`) + In-Memory/LocalStorage Fallback | MySQL 8.0 |
-| Tools Pemodelan | StarUML, Draw.io, PlantUML | — |
-
----
+|---------|-----------|-------|
+| Front-end | React, TypeScript, Vite, Lucide React | React 19, Vite 8 |
+| Back-end | Node.js, Express.js, Helmet, CORS, bcryptjs, JWT | Node 20+, Express 4.19+ |
+| Database | MySQL 8.0 (InnoDB, `utf8mb4`) + JSON/In-Memory Sync Store Fallback | MySQL 8.0 |
+| Tools pemodelan | Draw.io, StarUML, PlantUML | — |
+| Prototipe UI | Figma | — |
 
 ## Kebutuhan Sistem
 
-- **Node.js** v18 atau lebih baru (v20+ disarankan) & `npm`
-- **MySQL 8.0** (opsional jika menggunakan mode fallback in-memory, disarankan melalui XAMPP / MySQL Service untuk persistensi penuh)
+- **Node.js** v18 atau lebih baru (disarankan v20+) & `npm`
+- **MySQL 8.0** atau XAMPP *(opsional; backend mendukung graceful JSON/in-memory fallback jika MySQL tidak aktif)*
+- **Git**
 - Browser modern (Google Chrome, Microsoft Edge, Firefox, atau Safari)
-
----
 
 ## Instalasi dan Menjalankan Aplikasi
 
-### 1. Clone Repository
-```bash
-git clone https://github.com/juanmessi16/sad-final-project.git
-cd sad-final-project
-```
+1. Clone repository:
 
-### 2. Konfigurasi dan Jalankan Backend (Node.js + Express)
-1. Masuk ke direktori backend dan pasang dependensi:
+   ```bash
+   git clone https://github.com/juanmessi16/sad-final-project.git
+   cd sad-final-project
+   ```
+
+2. Pasang dependensi dan siapkan konfigurasi Backend:
+
    ```bash
    cd backend
    npm install
+   cp .env.example .env
    ```
-2. Sesuaikan konfigurasi file `backend/.env`:
-   ```env
-   PORT=5000
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=
-   DB_NAME=xunklab_db
-   JWT_SECRET=xunklab_super_secret_jwt_key_filkom_unklab_2026
-   ```
-3. Jalankan migrasi & seeding database (pastikan MySQL berjalan):
+
+   Sesuaikan isi `backend/.env` bila perlu (`PORT=5000`, `DB_HOST=127.0.0.1`, `DB_NAME=xunklab_db`).
+
+3. Siapkan database MySQL *(opsional jika menggunakan MySQL)* dan jalankan Backend:
+
    ```bash
    npm run migrate
-   ```
-4. Jalankan server backend:
-   ```bash
    npm start
    ```
-   *Server REST API berjalan di `http://localhost:5000`. Jika MySQL belum aktif, backend tetap melayani request menggunakan graceful in-memory fallback.*
 
-### 3. Jalankan Frontend (React + Vite)
-Buka terminal baru di direktori utama proyek:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Buka browser pada alamat: `http://localhost:5173`.
+   Server REST API berjalan di `http://localhost:5000`.
 
-Untuk build produksi frontend:
-```bash
-cd frontend
-npm run build
-```
+4. Buka terminal baru, pasang dependensi, dan jalankan Frontend:
 
----
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-## Akun Uji Coba Default
+   Untuk build produksi frontend:
+
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+5. Buka `http://localhost:5173` di browser.
+
+### Akun uji
 
 | Aktor | Username / NIM / NIP | Password | Keterangan |
-|---|---|---|---|
-| **Dosen** | `dosen` / `198501012010011001` | `dosen123` | George M. W. Tangka, S.Kom., MBA (Portal Dosen) |
+|-------|----------------------|----------|------------|
+| **Dosen** | `george` / `198501012010011001` | `123` | George M. W. Tangka, S.Kom., MBA (Portal Dosen) |
 | **Mahasiswa 1** | `105022410021` | `123` | Tulengkey, Juan Messi Septhian *(Data uji esai belum dinilai)* |
 | **Mahasiswa 2** | `105022510107` | `123` | Tuwaidan, Jeniffer Diana *(Data uji esai sudah dinilai)* |
-| **Mahasiswa 3** | `105022410095` | `123` | Sumual, Valentino *(Data uji sanksi Pengurangan Nilai -20 poin)* |
+| **Mahasiswa 3** | `105022410095` | `123` | Sumual, Valentino *(Data uji sanksi -20 poin)* |
 | **Mahasiswa 4** | `105022410007` | `123` | Sahetapy, Wilman Valentino |
 | **Mahasiswa 5** | `105022510475` | `123` | Laluyan, Matthew Arnold M |
-| **Akun Terkunci** | `105022499999` | `123` | Akun demo status `Terkunci` (Skenario penolakan login TC-04) |
+| **Akun Terkunci** | `terkunci` | `123` | Akun uji status `Terkunci` (TC-04) |
 
-> **PIN Ujian Default:** `483920` (6 digit) untuk ujian aktif *UTS Sistem Analisis & Desain (SAD)*.
-
----
+> **PIN Ujian Default:** `483920` (6 digit)
 
 ## Struktur Folder
 
 ```text
 sad-final-project/
 ├── backend/
+│   ├── data/
+│   │   └── session_sync_store.json   # Persistensi sinkronisasi state & session lock
 │   ├── database/
-│   │   ├── schema.sql                # DDL tabel, constraint foreign key, trigger immutable log
-│   │   └── seed.sql                  # Data awal (Dosen, Mahasiswa, Bank Soal, Ujian, Peserta)
+│   │   ├── schema.sql                # DDL tabel, foreign key, & trigger immutable log
+│   │   └── seed.sql                  # Data contoh awal
 │   ├── scripts/
-│   │   ├── migrate.js                # Skrip migrasi otomatis DB via mysql2/promise
-│   │   └── backup.js                 # Skrip backup terjadwal mysqldump
+│   │   ├── migrate.js                # Skrip migrasi MySQL
+│   │   └── backup.js                 # Skrip backup database
 │   ├── src/
-│   │   ├── config/
-│   │   │   └── db.js                 # Connection pool MySQL 8 & helper transaksi SQL
-│   │   ├── controllers/              # Logika bisnis (auth, ujian, sesi, anti-curang, hasil, dosen)
-│   │   ├── middlewares/
-│   │   │   └── securityMiddleware.js # Verifikasi JWT (<=3 jam), RBAC, HTTPS redirect, status_akun
-│   │   ├── routes/                   # Endpoint modular Express
-│   │   └── utils/                    # Auto-grader objektif, Fisher-Yates randomizer, ID generator
-│   ├── .env
+│   │   ├── config/db.js              # Connection pool MySQL & transaksi SQL
+│   │   ├── controllers/              # Logika use case (auth, ujian, sesi, anti-curang, hasil, dosen)
+│   │   ├── middlewares/              # JWT (<= 3 jam), RBAC 403, HTTPS redirect, IP whitelist
+│   │   ├── routes/                   # Rute REST API modular
+│   │   └── utils/                    # sessionStore.js, autoGrader.js, randomizer.js, idGenerator.js
+│   ├── .env.example
 │   ├── package.json
-│   └── server.js                     # Entry point REST API server
+│   └── server.js                     # Entry point Express REST API
 ├── frontend/
 │   ├── src/
 │   │   ├── ui-lib/
-│   │   │   ├── App.tsx               # Aplikasi utama (Landing, Login, Portal Mahasiswa, Portal Dosen, ExamPage)
-│   │   │   ├── apiClient.ts          # Klien API terpadu + sinkronisasi localStorage & seeder uji
-│   │   │   └── index.css             # Design system & styling layout portal
+│   │   │   ├── App.tsx               # Portal Mahasiswa, Portal Dosen, & ExamPage
+│   │   │   ├── apiClient.ts          # Klien API terpadu, deduplikasi, & sinkronisasi backend
+│   │   │   └── index.css             # Design system & styling layout
 │   │   ├── hooks/                    # useAntiCheat, useAutoSave
 │   │   ├── pages/                    # Komponen halaman modular
 │   │   └── services/                 # Adapter API & storage
-│   ├── ui/                           # Modul prototipe alternatif berbasis Python (Tkinter & SimpleHTTP)
-│   ├── package.json
-│   └── vite.config.js
-├── docs/
-│   ├── SAD_FP_Kelompok_SRS.pdf       # Dokumen SRS lengkap
-│   ├── diagrams/                     # Diagram Use Case, Sequence, Class, ERD
-│   └── screenshots/                  # Screenshot antarmuka aplikasi
+│   ├── ui/                           # Prototipe alternatif berbasis Python (Tkinter/SimpleHTTP)
+│   └── package.json
+├── media/                            # Screenshot antarmuka aplikasi
 └── README.md
 ```
 
----
+## Rancangan Sistem
 
-## Ringkasan Cakupan Pengujian (TC-01 s.d. TC-53)
+Ringkasan rancangan; detail lengkap ada di dokumen SRS.
 
-Sistem dirancang untuk memenuhi **53 skenario Test Case** yang dikelompokkan dalam modul berikut:
+| Artefak | Lokasi |
+|---------|--------|
+| Kebutuhan fungsional dan non-fungsional | SRS Bagian 5 |
+| Use case diagram dan description | SRS Bagian 6 |
+| Activity dan sequence diagram | SRS Bagian 6.4 dan 7.1 |
+| Class diagram | SRS Bagian 7.2 |
+| Model data (ERD) dan kamus data | SRS Bagian 8 |
+| Prototipe UI | [Figma Prototype — xUnklab Exam System](https://www.figma.com/make/gtLhi8jZA8qXw9if59lfFK/UI-xUnklab--SAD-?t=X5eCdlqS8fQNk7gD-1/) |
 
-| Kelompok Test Case | Cakupan Pengujian |
-|---|---|
-| **TC-01 s.d. TC-05, TC-47 s.d. TC-49** | Login multi-peran (NIM untuk Mahasiswa, Username/NIP untuk Dosen), penolakan akun `Terkunci`, *Single Active Device*, hashing password `bcrypt`, redirect `HTTPS`, RBAC `403`, dan masa berlaku JWT maks 3 jam. |
-| **TC-06 s.d. TC-10, TC-31 s.d. TC-34, TC-41, TC-50, TC-51** | Validasi PIN 6 digit di backend (tanpa ekspos `pin` di UI/API mahasiswa), validasi batas jadwal ujian, pembatasan IP jaringan kampus, pengacakan soal & opsi, kelola peserta terdaftar, dan pemulihan paksa sesi. |
-| **TC-11 s.d. TC-26, TC-42, TC-43** | *Auto-save* jawaban, timer sinkron & tambah waktu `+5m` real-time, deteksi anti-curang (Fullscreen, pindah tab, blokir copy-paste), eskalasi kunci paksa pelanggaran ke-3, submit manual/otomatis, resi ujian resmi, dan notifikasi jadwal. |
-| **TC-27 s.d. TC-30, TC-35 s.d. TC-40, TC-52, TC-53** | CRUD Bank Soal terisolasi per ujian, validasi kunci jawaban soal objektif, auto-grading objektif, penilaian manual esai & quick score, log pelanggaran *immutable / append-only*, penetapan sanksi pengurangan nilai/diskualifikasi, dan kontrol publikasi nilai dosen ke mahasiswa. |
+## Pengujian
+
+Ringkasan: **53 kasus uji (TC-01 s.d. TC-53), seluruh skenario inti terverifikasi pada alur Backend & Frontend**.
+
+| ID | Use case | Skenario | Hasil diharapkan | Status |
+|----|----------|----------|------------------|--------|
+| TC-01 | UC-01 | Login dengan NIM/username & password benar | Masuk ke dashboard sesuai peran | Lulus |
+| TC-03 | UC-01 | Login dengan password salah | Pesan kesalahan tampil, akses ditolak | Lulus |
+| TC-04 | UC-01 | Login dengan akun berstatus `Terkunci` | Ditolak dengan status `403 Forbidden` | Lulus |
+| TC-05 | UC-01 / UC-02 | Login atau buka ujian dari perangkat kedua bersamaan | Perangkat kedua ditolak (*Single-Device Lock*) | Lulus |
+| TC-06 | UC-02 | Masukkan PIN 6 digit salah (`pin_ujian`) | Ujian tidak dimulai, pesan error PIN tampil | Lulus |
+| TC-08 & TC-31 | UC-02 / UC-07 | Akses ujian sebelum jadwal mulai atau setelah jadwal selesai | Akses ditolak dengan keterangan waktu server | Lulus |
+| TC-27 & TC-28 | UC-05 / UC-10 | Dosen menonaktifkan/mengaktifkan publikasi hasil ujian | Mahasiswa melihat `"Belum dinilai"` vs nilai akhir | Lulus |
+| TC-29 & TC-30 | UC-06 | Tambah/edit soal objektif tanpa kunci jawaban | Validasi menolak simpan hingga kunci jawaban diisi | Lulus |
+| TC-32 | UC-07 | Simpan ujian dengan durasi `<= 0` menit | Validasi menolak dengan pesan error TC-32 | Lulus |
+| TC-34 & TC-42 | UC-08 | Akses ujian oleh non-peserta & tambah waktu `+5m` real-time | Non-peserta ditolak; peserta mendapat `+5 menit` | Lulus |
+| TC-40 | UC-09 | Input nilai esai (`0–100`) & akumulasi nilai akhir | Nilai akhir terhitung & status menjadi `"Selesai Dinilai"` | Lulus |
+| TC-52 | UC-09 | Upaya ubah/hapus `log_pelanggaran` | Ditolak trigger SQL & HTTP `403` (*immutable*) | Lulus |
+
+## Keterbatasan dan Pengembangan Berikutnya
+
+- Jika server MySQL lokal tidak diaktifkan, backend berjalan menggunakan penyimpanan fallback JSON (`backend/data/session_sync_store.json`) untuk menjaga sinkronisasi lintas browser tetap aktif.
+- Simulasi pembatasan IP jaringan kampus (`TC-41`) mendukung header uji `X-Simulated-IP` untuk keperluan demonstrasi di luar jaringan fisik kampus.
+- Pengembangan berikutnya: integrasi SSO Universitas Klabat, ekspor rekap nilai ke format `.xlsx`/`.pdf`, dan notifikasi *push* berbasis WebSocket.
+
+## Penggunaan AI dan Referensi
+
+| Alat AI | Dipakai untuk | Yang diperiksa atau diubah dari hasilnya |
+|---------|---------------|------------------------------------------|
+| Antigravity AI Assistant | Membantu implementasi sinkronisasi state terpusat, *single-device lock*, inline form cards, *alarm date-time picker*, dan perapihan dokumentasi | Memverifikasi seluruh endpoint API, logika deduplikasi ujian, hasil `vite build`, dan kesesuaian terhadap 53 kasus uji SRS |
+
+Referensi:
+
+1. React Documentation — https://react.dev/
+2. Express.js Documentation — https://expressjs.com/
+3. Vite Documentation — https://vite.dev/
+4. MySQL 8.0 Reference Manual — https://dev.mysql.com/doc/refman/8.0/en/
