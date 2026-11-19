@@ -187,7 +187,11 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div className="brand">
       <span className={compact ? "brand-mark small" : "brand-mark"}>
-        <Icon name="shield" size={compact ? 19 : 25} />
+        <img
+          src="/unklab-logo.png"
+          alt="Logo Universitas Klabat"
+          className="brand-logo-img"
+        />
       </span>
       <span className={compact ? "brand-name compact" : "brand-name"}>
         <b>x</b>Unklab
@@ -257,7 +261,7 @@ function Landing({ onLogin }: { onLogin: (role: Role) => void }) {
       </div>
       <footer className="landing-footer">
         <span>Universitas Klabat</span>
-        <span>© 2025 xUnklab</span>
+        <span>© 2026 xUnklab</span>
       </footer>
     </main>
   );

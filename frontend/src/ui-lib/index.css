@@ -107,21 +107,27 @@
 }
 
 .brand-mark {
-  display: grid;
-  width: 47px;
-  height: 47px;
-  color: #fff;
-  background: #51788b;
-  border-radius: 14px;
-  box-shadow: 0 8px 22px rgba(49, 87, 106, 0.2);
-  place-items: center;
+  display: inline-flex;
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  filter: drop-shadow(0 4px 10px rgba(41, 65, 76, 0.14));
 }
 
 .brand-mark.small {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  box-shadow: none;
+  width: 36px;
+  height: 36px;
+  filter: none;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-name {

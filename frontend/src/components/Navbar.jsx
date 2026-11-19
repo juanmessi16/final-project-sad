@@ -24,16 +24,15 @@ const Navbar = ({ currentUser, onLogout, inExam = false, examTitle = '' }) => {
         <div style={{
           width: '42px',
           height: '42px',
-          background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-          borderRadius: '12px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          color: '#FFFFFF',
-          boxShadow: '0 4px 10px rgba(37, 99, 235, 0.4)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          justifyContent: 'center'
         }}>
-          <GraduationCap size={24} />
+          <img
+            src="/unklab-logo.png"
+            alt="Logo Universitas Klabat"
+            style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+          />
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
