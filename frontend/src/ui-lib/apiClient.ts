@@ -8,7 +8,8 @@
  * - Mendukung Simulasi IP Jaringan Kampus vs Luar Kampus (TC-41)
  */
 
-const API_BASE = "http://localhost:5000/api";
+const RAW_API_URL = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL;
+const API_BASE = RAW_API_URL ? `${String(RAW_API_URL).replace(/\/+$/, "")}/api` : "http://localhost:5000/api";
 const DB_STORAGE_KEY = "xunklab_mirror_db_v2";
 const OFFLINE_QUEUE_KEY = "xunklab_offline_submit_queue_v2";
 

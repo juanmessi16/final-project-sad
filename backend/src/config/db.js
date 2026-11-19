@@ -20,7 +20,8 @@ const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   timezone: '+08:00', // WITA (Universitas Klabat / Manado)
-  dateStrings: true
+  dateStrings: true,
+  ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined
 });
 
 let schemaChecked = false;

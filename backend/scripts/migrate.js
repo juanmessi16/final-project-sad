@@ -24,13 +24,15 @@ async function runMigration() {
 
   let connection;
   try {
-    // 1. Hubungkan ke server MySQL tanpa memilih database terlebih dahulu
+    // 1. Hubungkan ke server MySQL/TiDB
     connection = await mysql.createConnection({
       host,
       port,
       user,
       password,
-      multipleStatements: true
+      database: 'test',
+      multipleStatements: true,
+      ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined
     });
 
     console.log(`1. Memeriksa keberadaan database '${database}'...`);
@@ -43,16 +45,35 @@ async function runMigration() {
     const schemaPath = path.resolve(__dirname, '../database/schema.sql');
     let schemaSQL = fs.readFileSync(schemaPath, 'utf8');
 
+    // Sinkronkan nama database jika berbeda dari default
+    schemaSQL = schemaSQL.replace(/USE `xunklab_db`;/g, `USE \`${database}\`;`);
+    schemaSQL = schemaSQL.replace(/CREATE DATABASE IF NOT EXISTS `xunklab_db`/g, `CREATE DATABASE IF NOT EXISTS \`${database}\``);
+
     // Hapus DELIMITER delimiter bawaan CLI agar kompatibel dengan query mysql2
     schemaSQL = schemaSQL.replace(/DELIMITER \$\$/g, '').replace(/DELIMITER ;/g, '').replace(/\$\$/g, ';');
 
-    await connection.query(schemaSQL);
-    console.log(`   [OK] Seluruh 12 tabel, foreign key, index, dan trigger berhasil dibuat.\n`);
+    try {
+      await connection.query(schemaSQL);
+      console.log(`   [OK] Seluruh 12 tabel, foreign key, index, dan trigger berhasil dibuat.\n`);
+    } catch (schemaErr) {
+      // TiDB Cloud dan beberapa serverless MySQL tidak mendukung syntax TRIGGER
+      if (schemaErr.message && (schemaErr.message.includes('TRIGGER') || schemaErr.message.includes('syntax to use line'))) {
+        console.log(`   [INFO] Engine basis data tidak mendukung TRIGGER (kompatibel TiDB Cloud). Menjalankan skema tabel...`);
+        let noTriggerSQL = schemaSQL
+          .replace(/DROP TRIGGER IF EXISTS [^;]+;/gi, '')
+          .replace(/CREATE TRIGGER[\s\S]*?END;/gi, '');
+        await connection.query(noTriggerSQL);
+        console.log(`   [OK] Seluruh 12 tabel, relasi foreign key, dan index berhasil dibuat.\n`);
+      } else {
+        throw schemaErr;
+      }
+    }
 
     // 3. Baca dan jalankan seed.sql
     console.log(`3. Mengeksekusi 'database/seed.sql' (Data Akun & Soal Ujian)...`);
     const seedPath = path.resolve(__dirname, '../database/seed.sql');
-    const seedSQL = fs.readFileSync(seedPath, 'utf8');
+    let seedSQL = fs.readFileSync(seedPath, 'utf8');
+    seedSQL = seedSQL.replace(/USE `xunklab_db`;/g, `USE \`${database}\`;`);
 
     await connection.query(seedSQL);
     console.log(`   [OK] Data seeding dosen, mahasiswa, bank soal, dan ujian berhasil diisi.\n`);
