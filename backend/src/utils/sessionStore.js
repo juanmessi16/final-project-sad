@@ -9,7 +9,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.resolve(__dirname, '../../data');
+const DATA_DIR = process.env.VERCEL
+  ? path.resolve('/tmp')
+  : path.resolve(__dirname, '../../data');
 const STORE_FILE = path.join(DATA_DIR, 'session_sync_store.json');
 const HEARTBEAT_TTL_MS = 60 * 1000; // 60 detik batas aktif heartbeat
 
