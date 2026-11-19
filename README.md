@@ -241,11 +241,11 @@ sad-final-project/
 
 ## Rancangan Sistem
 
-Ringkasan rancangan; detail lengkap ada di dokumen SRS: [docs/03_Template_SRS(xUnklab).docx](docs/03_Template_SRS%28xUnklab%29.docx).
+Ringkasan rancangan; detail lengkap ada di dokumen SRS: [/03_Template_SRS(xUnklab).docx](https://docs.google.com/document/d/1XCOx6VbbE8orUL5bdnupBOY1A-c0Oena/edit?usp=sharing&ouid=110981631999032571574&rtpof=true&sd=true).
 
 | Artefak | Lokasi |
 |---------|--------|
-| Dokumen SRS lengkap | [docs/03_Template_SRS(xUnklab).docx](docs/03_Template_SRS%28xUnklab%29.docx) |
+| Dokumen SRS lengkap | [03_Template_SRS(xUnklab).docx](https://docs.google.com/document/d/1XCOx6VbbE8orUL5bdnupBOY1A-c0Oena/edit?usp=sharing&ouid=110981631999032571574&rtpof=true&sd=true) |
 | Kebutuhan fungsional dan non-fungsional | SRS Bagian 5 |
 | Use case diagram dan description | SRS Bagian 6 |
 | Activity dan sequence diagram | SRS Bagian 6.4 dan 7.1 |
