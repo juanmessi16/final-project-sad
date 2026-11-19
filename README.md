@@ -11,7 +11,7 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 | **Objek / studi kasus** | Fakultas Ilmu Komputer (FILKOM), Universitas Klabat |
 | **Dosen pengampu** | George M. W. Tangka, S.Kom., MBA |
 | **Model SDLC** | Prototype / Agile Incremental |
-| **Dokumen SRS** | [docs/SAD_FP_Kelompok_SRS.pdf](docs/) |
+| **Dokumen SRS** | [docs/03_Template_SRS(xUnklab).docx](https://docs.google.com/document/d/1XCOx6VbbE8orUL5bdnupBOY1A-c0Oena/edit?usp=sharing&ouid=110981631999032571574&rtpof=true&sd=true) |
 | **Prototipe UI** | [Figma Prototype — xUnklab Exam System](https://www.figma.com/make/gtLhi8jZA8qXw9if59lfFK/UI-xUnklab--SAD-?t=X5eCdlqS8fQNk7gD-1/) |
 
 ## Anggota Kelompok
@@ -194,6 +194,10 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 ```text
 sad-final-project/
 ├── backend/
+│   ├── config/
+│   │   └── database.js               # Konfigurasi koneksi database
+│   ├── controllers/
+│   │   └── ujianController.js        # Controller dasar ujian
 │   ├── data/
 │   │   └── session_sync_store.json   # Persistensi sinkronisasi state & session lock
 │   ├── database/
@@ -211,27 +215,37 @@ sad-final-project/
 │   ├── .env.example
 │   ├── package.json
 │   └── server.js                     # Entry point Express REST API
+├── docs/
+│   └── 03_Template_SRS(xUnklab).docx # Dokumen Software Requirements Specification (SRS)
 ├── frontend/
+│   ├── public/                       # Aset statis publik (favicon, icons)
 │   ├── src/
+│   │   ├── assets/                   # Aset gambar komponen
+│   │   ├── components/               # Komponen UI (Navbar, Timer)
+│   │   ├── hooks/                    # useAntiCheat, useAutoSave
+│   │   ├── pages/                    # Halaman Login, PortalDosen, PortalMahasiswa
+│   │   ├── services/                 # Adapter API & storage
 │   │   ├── ui-lib/
-│   │   │   ├── App.tsx               # Portal Mahasiswa, Portal Dosen, & ExamPage
+│   │   │   ├── App.tsx               # Aplikasi utama (Portal Mahasiswa, Portal Dosen, & ExamPage)
 │   │   │   ├── apiClient.ts          # Klien API terpadu, deduplikasi, & sinkronisasi backend
 │   │   │   └── index.css             # Design system & styling layout
-│   │   ├── hooks/                    # useAntiCheat, useAutoSave
-│   │   ├── pages/                    # Komponen halaman modular
-│   │   └── services/                 # Adapter API & storage
-│   ├── ui/                           # Prototipe alternatif berbasis Python (Tkinter/SimpleHTTP)
-│   └── package.json
-├── media/                            # Screenshot antarmuka aplikasi
+│   │   ├── App.jsx                   # Wrapper entry UIApp
+│   │   └── main.jsx                  # Entry point React DOM
+│   ├── ui/                           # Prototipe alternatif berbasis Python (Tkinter & SimpleHTTP)
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── media/                            # 14 screenshot antarmuka aplikasi (.png)
 └── README.md
 ```
 
 ## Rancangan Sistem
 
-Ringkasan rancangan; detail lengkap ada di dokumen SRS.
+Ringkasan rancangan; detail lengkap ada di dokumen SRS: [docs/03_Template_SRS(xUnklab).docx](docs/03_Template_SRS%28xUnklab%29.docx).
 
 | Artefak | Lokasi |
 |---------|--------|
+| Dokumen SRS lengkap | [docs/03_Template_SRS(xUnklab).docx](docs/03_Template_SRS%28xUnklab%29.docx) |
 | Kebutuhan fungsional dan non-fungsional | SRS Bagian 5 |
 | Use case diagram dan description | SRS Bagian 6 |
 | Activity dan sequence diagram | SRS Bagian 6.4 dan 7.1 |
