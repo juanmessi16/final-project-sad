@@ -10,9 +10,10 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 | **Kelompok** | TAKATI |
 | **Objek / studi kasus** | Fakultas Ilmu Komputer (FILKOM), Universitas Klabat |
 | **Dosen pengampu** | George M. W. Tangka, S.Kom., MBA |
-| **Model SDLC** | Prototype / Agile Incremental |
+| **Model SDLC** | Waterfall |
 | **Dokumen SRS** | [docs/03_Template_SRS(xUnklab).docx](https://docs.google.com/document/d/1XCOx6VbbE8orUL5bdnupBOY1A-c0Oena/edit?usp=sharing&ouid=110981631999032571574&rtpof=true&sd=true) |
 | **Prototipe UI** | [Figma Prototype — xUnklab Exam System](https://www.figma.com/make/gtLhi8jZA8qXw9if59lfFK/UI-xUnklab--SAD-?fullscreen=1&t=glkf7QndYl0ZcLLy-1&code-node-id=0-6) |
+| **Link Akses Sistem** | https://xunklab.vercel.app/ |
 
 ## Anggota Kelompok
 
