@@ -1,4 +1,4 @@
-# xUnklab (SiLab Exam System) xunklab.vercel.app
+# xUnklab (SiLab Exam System) 
 
 Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, Universitas Klabat** yang membantu **Dosen** dan **Mahasiswa** menyelenggarakan serta mengikuti ujian daring secara aman, tersinkronisasi terpusat, dan terstruktur dengan proteksi **anti-curang tanpa kamera** agar integritas akademik tetap terjaga.
 
