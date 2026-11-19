@@ -7,7 +7,7 @@ Sistem informasi evaluasi akademik berbasis web untuk **Fakultas Ilmu Komputer, 
 | | |
 |---|---|
 | **Mata kuliah** | System Analysis and Design — Fakultas Ilmu Komputer, Universitas Klabat |
-| **Kelompok** | Final Project SAD (Informatika & Sistem Informasi) |
+| **Kelompok** | TAKATI |
 | **Objek / studi kasus** | Fakultas Ilmu Komputer (FILKOM), Universitas Klabat |
 | **Dosen pengampu** | George M. W. Tangka, S.Kom., MBA |
 | **Model SDLC** | Prototype / Agile Incremental |
