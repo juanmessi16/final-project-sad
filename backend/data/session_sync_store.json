@@ -1,0 +1,1217 @@
+{
+  "active_user_sessions": {},
+  "active_exam_sessions": {},
+  "synced_exams": [
+    {
+      "id_ujian": "UJN_01",
+      "nama_ujian": "Sistem Analysis and Design",
+      "mata_kuliah": "Sistem Analisis & Desain",
+      "kode_mk": "IF-241",
+      "nama_dosen": "George M. W. Tangka, S.Kom., MBA",
+      "tanggal_waktu_mulai": "2026-11-18 16:10",
+      "tanggal_waktu_selesai": "2026-11-18 19:10",
+      "durasi": 90,
+      "pin_ujian": "483920",
+      "maks_percobaan": 1,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "batasi_jaringan_kampus": false,
+      "subnet_kampus": "127.0.0.1,::1,192.168.,10.,172.16.,103.106.",
+      "batas_toleransi_pelanggaran": 3,
+      "hasil_dipublikasikan": true
+    },
+    {
+      "id_ujian": "UJN_4026",
+      "nama_ujian": "testing",
+      "mata_kuliah": "Sistem Analisis & Desain",
+      "kode_mk": "IF-241",
+      "nama_dosen": "George M. W. Tangka, S.Kom., MBA",
+      "tanggal_waktu_mulai": "2026-11-19 01:42",
+      "tanggal_waktu_selesai": "2026-11-26 01:58",
+      "durasi": 3,
+      "pin_ujian": "111111",
+      "maks_percobaan": 1,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "batasi_jaringan_kampus": false,
+      "batas_toleransi_pelanggaran": 3,
+      "hasil_dipublikasikan": false
+    },
+    {
+      "id_ujian": "UJN_3717",
+      "nama_ujian": "Testing Mengerjakan Ujian",
+      "mata_kuliah": "Sistem Analisis & Desain",
+      "kode_mk": "IF-241",
+      "nama_dosen": "George M. W. Tangka, S.Kom., MBA",
+      "tanggal_waktu_mulai": "2026-11-19 01:52",
+      "tanggal_waktu_selesai": "2026-11-26 17:59",
+      "durasi": 90,
+      "pin_ujian": "123456",
+      "maks_percobaan": 1,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "batasi_jaringan_kampus": false,
+      "batas_toleransi_pelanggaran": 3,
+      "hasil_dipublikasikan": false
+    }
+  ],
+  "synced_questions": [
+    {
+      "id_soal": "SOAL_01",
+      "id_bank_soal": "BS_01",
+      "tipe_soal": "Pilihan Ganda",
+      "pertanyaan": "Apa tujuan utama dari diagram Use Case dalam analisis dan perancangan perangkat lunak?",
+      "opsi_jawaban": [
+        "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+        "Menentukan skema fisik tabel basis data dan tipe data kolom",
+        "Mengatur alokasi memori runtime pada server aplikasi",
+        "Menampilkan topologi kabel jaringan dan router fisik"
+      ],
+      "kunci_jawaban": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+      "bobot": 15,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_soal": "SOAL_03",
+      "id_bank_soal": "BS_01",
+      "tipe_soal": "Benar/Salah",
+      "pertanyaan": "Pendeteksian perpindahan tab atau jendela browser pada antarmuka ujian web dapat dilakukan secara andal tanpa kamera menggunakan event Page Visibility API (document.visibilityState) dan Window Blur listener.",
+      "opsi_jawaban": [
+        "Benar",
+        "Salah"
+      ],
+      "kunci_jawaban": "Benar",
+      "bobot": 10,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_soal": "SOAL_04",
+      "id_bank_soal": "BS_01",
+      "tipe_soal": "Benar/Salah",
+      "pertanyaan": "Pada aturan bisnis xUnklab (BR-01), seorang mahasiswa diizinkan untuk membuka sesi ujian aktif secara bersamaan di dua perangkat berbeda untuk mempercepat pengerjaan.",
+      "opsi_jawaban": [
+        "Benar",
+        "Salah"
+      ],
+      "kunci_jawaban": "Salah",
+      "bobot": 10,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_soal": "SOAL_05",
+      "id_bank_soal": "BS_01",
+      "tipe_soal": "Isian Singkat",
+      "pertanyaan": "Sebutkan istilah diagram UML yang menggambarkan interaksi antar objek secara dinamis yang disusun berdasarkan urutan waktu (kronologis)!",
+      "opsi_jawaban": null,
+      "kunci_jawaban": "Sequence Diagram",
+      "bobot": 20,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_soal": "SOAL_06",
+      "id_bank_soal": "BS_01",
+      "tipe_soal": "Esai",
+      "pertanyaan": "Jelaskan bagaimana mekanisme perlindungan anti-curang tanpa kamera (meliputi pencegahan copy-paste, pendeteksian fullscreen, dan penghitungan pelanggaran bertingkat) dapat menjamin integritas evaluasi akademik mahasiswa!",
+      "opsi_jawaban": null,
+      "kunci_jawaban": null,
+      "bobot": 30,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01",
+      "nilai_soal": 23
+    },
+    {
+      "id_soal": "SOAL_93731",
+      "id_bank_soal": "BS_01",
+      "pertanyaan": "tes",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Opsi Jawaban A",
+        "Opsi Jawaban B",
+        "Opsi Jawaban C",
+        "Opsi Jawaban D"
+      ],
+      "kunci_jawaban": "A",
+      "bobot": 15,
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_soal": "SOAL_85148",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01",
+      "pertanyaan": "okk",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Opsi Jawaban A",
+        "Opsi Jawaban B",
+        "Opsi Jawaban C",
+        "Opsi Jawaban D"
+      ],
+      "kunci_jawaban": "Opsi Jawaban A",
+      "bobot": 15
+    },
+    {
+      "id_soal": "SOAL_57007",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "pertanyaan": "1",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Opsi Jawaban A",
+        "Opsi Jawaban B",
+        "Opsi Jawaban C",
+        "Opsi Jawaban D"
+      ],
+      "kunci_jawaban": "Opsi Jawaban A",
+      "bobot": 15
+    },
+    {
+      "id_soal": "SOAL_66854",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "pertanyaan": "2",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Opsi Jawaban A",
+        "Opsi Jawaban B",
+        "Opsi Jawaban C",
+        "Opsi Jawaban D"
+      ],
+      "kunci_jawaban": "Opsi Jawaban B",
+      "bobot": 15
+    },
+    {
+      "id_soal": "SOAL_72434",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "pertanyaan": "3",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Opsi Jawaban A",
+        "Opsi Jawaban B",
+        "Opsi Jawaban C",
+        "Opsi Jawaban D"
+      ],
+      "kunci_jawaban": "Opsi Jawaban C",
+      "bobot": 15
+    },
+    {
+      "id_soal": "SOAL_92080",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "pertanyaan": "hari apa ini?",
+      "tipe_soal": "Pilihan Ganda",
+      "opsi_jawaban": [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis"
+      ],
+      "kunci_jawaban": "Kamis",
+      "bobot": 15
+    },
+    {
+      "id_soal": "SOAL_16358",
+      "id_bank_soal": "BS_01",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "pertanyaan": "Ini hari Kamis",
+      "tipe_soal": "Benar/Salah",
+      "opsi_jawaban": [
+        "Benar",
+        "Salah"
+      ],
+      "kunci_jawaban": "Benar",
+      "bobot": 15
+    }
+  ],
+  "synced_participants": [
+    {
+      "id_mahasiswa": "MHS_02",
+      "nim": "105022510107",
+      "nama": "Tuwaidan, Jeniffer Diana",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_mahasiswa": "MHS_03",
+      "nim": "105022410095",
+      "nama": "Sumual, Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_mahasiswa": "MHS_04",
+      "nim": "105022410007",
+      "nama": "Sahetapy, Wilman Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01"
+    },
+    {
+      "id_mahasiswa": "MHS_05",
+      "nim": "105022510475",
+      "nama": "Laluyan, Matthew Arnold M",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01",
+      "total_nilai": 67,
+      "status_ujian": "Selesai",
+      "id_sesi": "SES_UJN_01_105022510475"
+    },
+    {
+      "id_mahasiswa": "MHS_6451",
+      "nim": "105022410021",
+      "nama": "Tulengkey, Juan Messi Septhian",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_01",
+      "examId": "UJN_01",
+      "total_nilai": 29,
+      "status_ujian": "Disubmit Otomatis",
+      "id_sesi": "SES_535626"
+    },
+    {
+      "id_mahasiswa": "MHS_02_UJN_4026",
+      "nim": "105022510107",
+      "nama": "Tuwaidan, Jeniffer Diana",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_03_UJN_4026",
+      "nim": "105022410095",
+      "nama": "Sumual, Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_04_UJN_4026",
+      "nim": "105022410007",
+      "nama": "Sahetapy, Wilman Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_05_UJN_4026",
+      "nim": "105022510475",
+      "nama": "Laluyan, Matthew Arnold M",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "total_nilai": 67,
+      "status_ujian": "Selesai",
+      "id_sesi": "SES_UJN_01_105022510475",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_6451_UJN_4026",
+      "nim": "105022410021",
+      "nama": "Tulengkey, Juan Messi Septhian",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_4026",
+      "examId": "UJN_4026",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_02_UJN_3717",
+      "nim": "105022510107",
+      "nama": "Tuwaidan, Jeniffer Diana",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_03_UJN_3717",
+      "nim": "105022410095",
+      "nama": "Sumual, Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_04_UJN_3717",
+      "nim": "105022410007",
+      "nama": "Sahetapy, Wilman Valentino",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_05_UJN_3717",
+      "nim": "105022510475",
+      "nama": "Laluyan, Matthew Arnold M",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "total_nilai": 67,
+      "status_ujian": "Selesai",
+      "id_sesi": "SES_UJN_01_105022510475",
+      "tambahan_waktu": 0
+    },
+    {
+      "id_mahasiswa": "MHS_6451_UJN_3717",
+      "nim": "105022410021",
+      "nama": "Tulengkey, Juan Messi Septhian",
+      "kelas": "Kelas A",
+      "id_ujian": "UJN_3717",
+      "examId": "UJN_3717",
+      "tambahan_waktu": 0
+    }
+  ],
+  "synced_sessions": [
+    {
+      "id_sesi": "SES_535626",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "testing",
+      "kode_mk": "IF-241",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "durasi": 3,
+      "tambahan_waktu": 0,
+      "sisa_waktu": 0,
+      "started_at_ms": 1794890535626,
+      "jumlah_peringatan": 1,
+      "batas_toleransi_pelanggaran": 3,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "status_ujian": "Disubmit Otomatis",
+      "percobaan_ke": 1,
+      "active_device_token": null,
+      "questions": [
+        {
+          "id_soal": "SOAL_04",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Pada aturan bisnis xUnklab (BR-01), seorang mahasiswa diizinkan untuk membuka sesi ujian aktif secara bersamaan di dua perangkat berbeda untuk mempercepat pengerjaan.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Salah",
+          "bobot": 10,
+          "urutan_soal": 1,
+          "jawaban_dipilih": "Benar"
+        },
+        {
+          "id_soal": "SOAL_03",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Pendeteksian perpindahan tab atau jendela browser pada antarmuka ujian web dapat dilakukan secara andal tanpa kamera menggunakan event Page Visibility API (document.visibilityState) dan Window Blur listener.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Benar",
+          "bobot": 10,
+          "urutan_soal": 2,
+          "jawaban_dipilih": "Salah"
+        },
+        {
+          "id_soal": "SOAL_93731",
+          "id_bank_soal": "BS_01",
+          "pertanyaan": "tes",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban C",
+            "Opsi Jawaban B",
+            "Opsi Jawaban D",
+            "Opsi Jawaban A"
+          ],
+          "kunci_jawaban": "A",
+          "bobot": 15,
+          "urutan_soal": 3,
+          "jawaban_dipilih": "Opsi Jawaban C"
+        },
+        {
+          "id_soal": "SOAL_02",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Pilihan Ganda",
+          "pertanyaan": "Dalam Unified Modeling Language (UML), hubungan <<include>> antar use case mengindikasikan bahwa:",
+          "opsi_jawaban": [
+            "Use case tersebut merupakan turunan konkret dari use case abstrak",
+            "Use case bersifat opsional bergantung preferensi dinamis pengguna",
+            "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+            "Use case dasar hanya mengeksekusi jika terjadi kondisi pengecualian (exception)"
+          ],
+          "kunci_jawaban": "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+          "bobot": 15,
+          "urutan_soal": 4,
+          "jawaban_dipilih": "Use case tersebut merupakan turunan konkret dari use case abstrak"
+        },
+        {
+          "id_soal": "SOAL_06",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Esai",
+          "pertanyaan": "Jelaskan bagaimana mekanisme perlindungan anti-curang tanpa kamera (meliputi pencegahan copy-paste, pendeteksian fullscreen, dan penghitungan pelanggaran bertingkat) dapat menjamin integritas evaluasi akademik mahasiswa!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": null,
+          "bobot": 30,
+          "urutan_soal": 5,
+          "jawaban_dipilih": "hahahaha",
+          "nilai_soal": 22.5
+        },
+        {
+          "id_soal": "SOAL_05",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Isian Singkat",
+          "pertanyaan": "Sebutkan istilah diagram UML yang menggambarkan interaksi antar objek secara dinamis yang disusun berdasarkan urutan waktu (kronologis)!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": "Sequence Diagram",
+          "bobot": 20,
+          "urutan_soal": 6,
+          "jawaban_dipilih": "dfdfdfdf"
+        },
+        {
+          "id_soal": "SOAL_01",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Pilihan Ganda",
+          "pertanyaan": "Apa tujuan utama dari diagram Use Case dalam analisis dan perancangan perangkat lunak?",
+          "opsi_jawaban": [
+            "Menentukan skema fisik tabel basis data dan tipe data kolom",
+            "Menampilkan topologi kabel jaringan dan router fisik",
+            "Mengatur alokasi memori runtime pada server aplikasi",
+            "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem"
+          ],
+          "kunci_jawaban": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+          "bobot": 15,
+          "urutan_soal": 7,
+          "jawaban_dipilih": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem"
+        }
+      ],
+      "answers": {
+        "SOAL_04": "Benar",
+        "SOAL_03": "Salah",
+        "SOAL_93731": "Opsi Jawaban C",
+        "SOAL_02": "Use case tersebut merupakan turunan konkret dari use case abstrak",
+        "SOAL_06": "hahahaha",
+        "SOAL_05": "dfdfdfdf",
+        "SOAL_01": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem"
+      },
+      "essayScores": {
+        "SOAL_06": 75
+      },
+      "total_nilai": 29,
+      "numeric_score": 29,
+      "objective_earned": 15,
+      "objective_bobot": 100,
+      "essay_earned": 23,
+      "essay_bobot": 30,
+      "has_ungraded_essay": false,
+      "id_bukti": "XU-SAD-717749",
+      "waktu_pengiriman": "17 November 2026 pukul 12.45.17",
+      "status_keputusan": "Tidak Ada"
+    },
+    {
+      "id_sesi": "SES_SUBMIT_01",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "kode_mk": "IF-241",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Tulengkey, Juan Messi Septhian",
+      "status_ujian": "Terkirim",
+      "waktu_pengiriman": "17/11/2026, 13.02.56",
+      "durasi": 90,
+      "sisa_waktu": 0,
+      "answers": {
+        "SOAL_01": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+        "SOAL_02": "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+        "SOAL_03": "Benar",
+        "SOAL_04": "Salah",
+        "SOAL_05": "Sequence Diagram",
+        "SOAL_06": "Sistem ujian online xUnklab menjamin integritas evaluasi melalui pemantauan visibilitychange saat tab berpindah, penguncian mode layar penuh (fullscreen), serta pemblokiran event clipboard copy-paste dan inspect element tanpa memerlukan pengawasan kamera webcam."
+      },
+      "essayScores": {
+        "SOAL_06": 80,
+        "SOAL_DB_04": 80,
+        "SOAL_RPL_03": 80
+      },
+      "has_ungraded_essay": false,
+      "objective_earned": 70,
+      "objective_bobot": 215,
+      "essay_earned": 80,
+      "essay_bobot": 100,
+      "total_nilai": 48,
+      "numeric_score": 48,
+      "status_keputusan": "Tidak Ada"
+    },
+    {
+      "id_sesi": "SES_SUBMIT_02",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "kode_mk": "IF-241",
+      "nim": "105022510107",
+      "nama_mahasiswa": "Tuwaidan, Jeniffer Diana",
+      "status_ujian": "Terkirim",
+      "waktu_pengiriman": "17/11/2026, 12.47.56",
+      "durasi": 90,
+      "sisa_waktu": 0,
+      "answers": {
+        "SOAL_01": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+        "SOAL_02": "Use case bersifat opsional bergantung preferensi dinamis pengguna",
+        "SOAL_03": "Benar",
+        "SOAL_04": "Salah",
+        "SOAL_05": "Class Diagram",
+        "SOAL_06": "Mekanisme anti-curang tanpa kamera mengandalkan deteksi window blur dan peringatan bertingkat hingga sesi dikunci paksa."
+      },
+      "essayScores": {
+        "SOAL_06": 80
+      },
+      "has_ungraded_essay": false,
+      "objective_earned": 35,
+      "objective_bobot": 70,
+      "essay_earned": 24,
+      "essay_bobot": 30,
+      "total_nilai": 59,
+      "numeric_score": 59,
+      "status_keputusan": "Tidak Ada"
+    },
+    {
+      "id_sesi": "SES_SUBMIT_03",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "kode_mk": "IF-241",
+      "nim": "105022410095",
+      "nama_mahasiswa": "Sumual, Valentino",
+      "status_ujian": "Sesi Dikunci Paksa",
+      "waktu_pengiriman": "17/11/2026, 12.32.56",
+      "durasi": 90,
+      "sisa_waktu": 0,
+      "answers": {
+        "SOAL_01": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+        "SOAL_02": "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+        "SOAL_03": "Salah",
+        "SOAL_04": "Salah",
+        "SOAL_05": "Sequence Diagram",
+        "SOAL_06": "Keamanan berbasis event JavaScript pada peramban web."
+      },
+      "essayScores": {
+        "SOAL_06": 70
+      },
+      "has_ungraded_essay": false,
+      "objective_earned": 60,
+      "objective_bobot": 70,
+      "essay_earned": 21,
+      "essay_bobot": 30,
+      "total_nilai": 61,
+      "numeric_score": 61,
+      "status_keputusan": "Pengurangan Nilai"
+    },
+    {
+      "id_sesi": "SES_UJN_01_105022510475",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Tulengkey, Juan Messi Septhian",
+      "status_ujian": "Selesai",
+      "questions": [
+        {
+          "id_soal": "SOAL_01",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Pilihan Ganda",
+          "pertanyaan": "Apa tujuan utama dari diagram Use Case dalam analisis dan perancangan perangkat lunak?",
+          "opsi_jawaban": [
+            "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+            "Menentukan skema fisik tabel basis data dan tipe data kolom",
+            "Mengatur alokasi memori runtime pada server aplikasi",
+            "Menampilkan topologi kabel jaringan dan router fisik"
+          ],
+          "kunci_jawaban": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+          "bobot": 15,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_02",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Pilihan Ganda",
+          "pertanyaan": "Dalam Unified Modeling Language (UML), hubungan <<include>> antar use case mengindikasikan bahwa:",
+          "opsi_jawaban": [
+            "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+            "Use case dasar hanya mengeksekusi jika terjadi kondisi pengecualian (exception)",
+            "Use case bersifat opsional bergantung preferensi dinamis pengguna",
+            "Use case tersebut merupakan turunan konkret dari use case abstrak"
+          ],
+          "kunci_jawaban": "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+          "bobot": 15,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_03",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Pendeteksian perpindahan tab atau jendela browser pada antarmuka ujian web dapat dilakukan secara andal tanpa kamera menggunakan event Page Visibility API (document.visibilityState) dan Window Blur listener.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Benar",
+          "bobot": 10,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_04",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Pada aturan bisnis xUnklab (BR-01), seorang mahasiswa diizinkan untuk membuka sesi ujian aktif secara bersamaan di dua perangkat berbeda untuk mempercepat pengerjaan.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Salah",
+          "bobot": 10,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_05",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Isian Singkat",
+          "pertanyaan": "Sebutkan istilah diagram UML yang menggambarkan interaksi antar objek secara dinamis yang disusun berdasarkan urutan waktu (kronologis)!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": "Sequence Diagram",
+          "bobot": 20,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_06",
+          "id_bank_soal": "BS_01",
+          "tipe_soal": "Esai",
+          "pertanyaan": "Jelaskan bagaimana mekanisme perlindungan anti-curang tanpa kamera (meliputi pencegahan copy-paste, pendeteksian fullscreen, dan penghitungan pelanggaran bertingkat) dapat menjamin integritas evaluasi akademik mahasiswa!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": null,
+          "bobot": 30,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01",
+          "nilai_soal": 24
+        },
+        {
+          "id_soal": "SOAL_93731",
+          "id_bank_soal": "BS_01",
+          "pertanyaan": "tes",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban A",
+            "Opsi Jawaban B",
+            "Opsi Jawaban C",
+            "Opsi Jawaban D"
+          ],
+          "kunci_jawaban": "A",
+          "bobot": 15,
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01"
+        },
+        {
+          "id_soal": "SOAL_DB_01",
+          "id_bank_soal": "BS_02",
+          "id_ujian": "UJN_02",
+          "examId": "UJN_02",
+          "tipe_soal": "Pilihan Ganda",
+          "pertanyaan": "Bentuk normal manakah yang mensyaratkan setiap atribut bukan kunci bergantung secara penuh pada kunci utama (primary key)?",
+          "opsi_jawaban": [
+            "First Normal Form (1NF)",
+            "Second Normal Form (2NF)",
+            "Third Normal Form (3NF)",
+            "Boyce-Codd Normal Form (BCNF)"
+          ],
+          "kunci_jawaban": "Second Normal Form (2NF)",
+          "bobot": 25
+        },
+        {
+          "id_soal": "SOAL_DB_02",
+          "id_bank_soal": "BS_02",
+          "id_ujian": "UJN_02",
+          "examId": "UJN_02",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Indeks B-Tree pada basis data relasional dapat mempercepat operasi pencarian rentang (range query) dan penyortiran data.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Benar",
+          "bobot": 20
+        },
+        {
+          "id_soal": "SOAL_DB_03",
+          "id_bank_soal": "BS_02",
+          "id_ujian": "UJN_02",
+          "examId": "UJN_02",
+          "tipe_soal": "Isian Singkat",
+          "pertanyaan": "Sebutkan klausul SQL yang digunakan untuk mengelompokkan baris berdasarkan nilai kolom tertentu dalam query agregasi!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": "GROUP BY",
+          "bobot": 25
+        },
+        {
+          "id_soal": "SOAL_DB_04",
+          "id_bank_soal": "BS_02",
+          "id_ujian": "UJN_02",
+          "examId": "UJN_02",
+          "tipe_soal": "Esai",
+          "pertanyaan": "Uraikan prinsip ACID (Atomicity, Consistency, Isolation, Durability) dalam manajemen transaksi basis data dan jelaskan contoh penerapannya!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": null,
+          "bobot": 30,
+          "nilai_soal": 24
+        },
+        {
+          "id_soal": "SOAL_RPL_01",
+          "id_bank_soal": "BS_03",
+          "id_ujian": "UJN_03",
+          "examId": "UJN_03",
+          "tipe_soal": "Benar/Salah",
+          "pertanyaan": "Metodologi Agile lebih mengutamakan kolaborasi langsung dengan pengguna dan respon terhadap perubahan dibandingkan kepatuhan kaku pada rencana awal.",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Benar",
+          "bobot": 30
+        },
+        {
+          "id_soal": "SOAL_RPL_02",
+          "id_bank_soal": "BS_03",
+          "id_ujian": "UJN_03",
+          "examId": "UJN_03",
+          "tipe_soal": "Isian Singkat",
+          "pertanyaan": "Sebutkan fase pertama dalam model siklus hidup pengembangan perangkat lunak (SDLC) Waterfall klasik!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": "Requirements Analysis",
+          "bobot": 30
+        },
+        {
+          "id_soal": "SOAL_RPL_03",
+          "id_bank_soal": "BS_03",
+          "id_ujian": "UJN_03",
+          "examId": "UJN_03",
+          "tipe_soal": "Esai",
+          "pertanyaan": "Jelaskan perbedaan mendasar antara pengujian fungsional Black-Box Testing dan White-Box Testing beserta kriteria penggunaannya!",
+          "opsi_jawaban": null,
+          "kunci_jawaban": null,
+          "bobot": 40,
+          "nilai_soal": 32
+        },
+        {
+          "id_soal": "SOAL_73127",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_7268",
+          "examId": "UJN_7268",
+          "pertanyaan": "siapa nama saya?",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban A",
+            "Opsi Jawaban B",
+            "Juan",
+            "Opsi Jawaban D"
+          ],
+          "kunci_jawaban": "Juan",
+          "bobot": 5
+        },
+        {
+          "id_soal": "SOAL_85148",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_01",
+          "examId": "UJN_01",
+          "pertanyaan": "okk",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban A",
+            "Opsi Jawaban B",
+            "Opsi Jawaban C",
+            "Opsi Jawaban D"
+          ],
+          "kunci_jawaban": "Opsi Jawaban A",
+          "bobot": 15
+        }
+      ],
+      "answers": {
+        "SOAL_01": "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
+        "SOAL_02": "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
+        "SOAL_03": "Benar",
+        "SOAL_04": "Salah",
+        "SOAL_05": "Sequence Diagram",
+        "SOAL_06": "Anti-curang tanpa kamera bekerja melalui Fullscreen API, Page Visibility API, dan pemblokiran clipboard serta pencatatan log imutabel."
+      },
+      "essayScores": {
+        "SOAL_06": 58,
+        "SOAL_DB_04": 80,
+        "SOAL_RPL_03": 80
+      },
+      "total_nilai": 67,
+      "numeric_score": 67,
+      "objective_earned": 70,
+      "objective_bobot": 100,
+      "essay_earned": 17,
+      "essay_bobot": 30,
+      "has_ungraded_essay": false
+    },
+    {
+      "id_sesi": "SES_795078",
+      "id_ujian": "UJN_4026",
+      "nama_ujian": "testing",
+      "kode_mk": "IF-241",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "durasi": 3,
+      "tambahan_waktu": 0,
+      "sisa_waktu": 0,
+      "started_at_ms": 1795023795078,
+      "jumlah_peringatan": 0,
+      "batas_toleransi_pelanggaran": 3,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "status_ujian": "Selesai",
+      "percobaan_ke": 1,
+      "active_device_token": null,
+      "questions": [
+        {
+          "id_soal": "SOAL_57007",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "1",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban D",
+            "Opsi Jawaban C",
+            "Opsi Jawaban A",
+            "Opsi Jawaban B"
+          ],
+          "kunci_jawaban": "Opsi Jawaban A",
+          "bobot": 15,
+          "urutan_soal": 1,
+          "jawaban_dipilih": null
+        },
+        {
+          "id_soal": "SOAL_72434",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "3",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban B",
+            "Opsi Jawaban A",
+            "Opsi Jawaban D",
+            "Opsi Jawaban C"
+          ],
+          "kunci_jawaban": "Opsi Jawaban C",
+          "bobot": 15,
+          "urutan_soal": 2,
+          "jawaban_dipilih": null
+        },
+        {
+          "id_soal": "SOAL_66854",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "2",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban D",
+            "Opsi Jawaban A",
+            "Opsi Jawaban C",
+            "Opsi Jawaban B"
+          ],
+          "kunci_jawaban": "Opsi Jawaban B",
+          "bobot": 15,
+          "urutan_soal": 3,
+          "jawaban_dipilih": null
+        }
+      ],
+      "answers": {},
+      "essayScores": {},
+      "total_nilai": 0,
+      "numeric_score": 0,
+      "objective_earned": 0,
+      "objective_bobot": 45,
+      "essay_earned": 0,
+      "essay_bobot": 0,
+      "has_ungraded_essay": false,
+      "id_bukti": "XU-SAD-817630",
+      "waktu_pengiriman": "19 November 2026 pukul 01.43.37",
+      "status_keputusan": "Tidak Ada"
+    },
+    {
+      "id_sesi": "SES_799085",
+      "id_ujian": "UJN_4026",
+      "nama_ujian": "testing",
+      "kode_mk": "IF-241",
+      "nim": "105022510107",
+      "nama_mahasiswa": "Jeniffer Diana Tuwaidan",
+      "durasi": 3,
+      "tambahan_waktu": 0,
+      "sisa_waktu": 0,
+      "started_at_ms": 1795023799085,
+      "jumlah_peringatan": 0,
+      "batas_toleransi_pelanggaran": 3,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "status_ujian": "Selesai",
+      "percobaan_ke": 1,
+      "active_device_token": null,
+      "questions": [
+        {
+          "id_soal": "SOAL_72434",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "3",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban B",
+            "Opsi Jawaban A",
+            "Opsi Jawaban C",
+            "Opsi Jawaban D"
+          ],
+          "kunci_jawaban": "Opsi Jawaban C",
+          "bobot": 15,
+          "urutan_soal": 1,
+          "jawaban_dipilih": "Opsi Jawaban B"
+        },
+        {
+          "id_soal": "SOAL_57007",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "1",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban C",
+            "Opsi Jawaban B",
+            "Opsi Jawaban D",
+            "Opsi Jawaban A"
+          ],
+          "kunci_jawaban": "Opsi Jawaban A",
+          "bobot": 15,
+          "urutan_soal": 2,
+          "jawaban_dipilih": null
+        },
+        {
+          "id_soal": "SOAL_66854",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_4026",
+          "examId": "UJN_4026",
+          "pertanyaan": "2",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Opsi Jawaban C",
+            "Opsi Jawaban B",
+            "Opsi Jawaban A",
+            "Opsi Jawaban D"
+          ],
+          "kunci_jawaban": "Opsi Jawaban B",
+          "bobot": 15,
+          "urutan_soal": 3,
+          "jawaban_dipilih": null
+        }
+      ],
+      "answers": {
+        "SOAL_72434": "Opsi Jawaban B"
+      },
+      "essayScores": {},
+      "total_nilai": 0,
+      "numeric_score": 0,
+      "objective_earned": 0,
+      "objective_bobot": 45,
+      "essay_earned": 0,
+      "essay_bobot": 0,
+      "has_ungraded_essay": false,
+      "id_bukti": "XU-SAD-811915",
+      "waktu_pengiriman": "19 November 2026 pukul 01.43.31",
+      "status_keputusan": "Tidak Ada"
+    },
+    {
+      "id_sesi": "SES_545712",
+      "id_ujian": "UJN_3717",
+      "nama_ujian": "Testing Mengerjakan Ujian",
+      "kode_mk": "IF-241",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "durasi": 90,
+      "tambahan_waktu": 0,
+      "sisa_waktu": 0,
+      "started_at_ms": 1795024545712,
+      "jumlah_peringatan": 3,
+      "batas_toleransi_pelanggaran": 3,
+      "acak_aktif": true,
+      "acak_opsi": true,
+      "status_ujian": "Selesai",
+      "percobaan_ke": 1,
+      "active_device_token": null,
+      "questions": [
+        {
+          "id_soal": "SOAL_92080",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_3717",
+          "examId": "UJN_3717",
+          "pertanyaan": "hari apa ini?",
+          "tipe_soal": "Pilihan Ganda",
+          "opsi_jawaban": [
+            "Selasa",
+            "Kamis",
+            "Senin",
+            "Rabu"
+          ],
+          "kunci_jawaban": "Kamis",
+          "bobot": 15,
+          "urutan_soal": 1,
+          "jawaban_dipilih": null
+        },
+        {
+          "id_soal": "SOAL_16358",
+          "id_bank_soal": "BS_01",
+          "id_ujian": "UJN_3717",
+          "examId": "UJN_3717",
+          "pertanyaan": "Ini hari Kamis",
+          "tipe_soal": "Benar/Salah",
+          "opsi_jawaban": [
+            "Benar",
+            "Salah"
+          ],
+          "kunci_jawaban": "Benar",
+          "bobot": 15,
+          "urutan_soal": 2,
+          "jawaban_dipilih": "Benar"
+        }
+      ],
+      "answers": {
+        "SOAL_16358": "Benar"
+      },
+      "essayScores": {},
+      "total_nilai": 50,
+      "numeric_score": 50,
+      "id_bukti": "XU-SAD-133912",
+      "waktu_pengiriman": "19 November 2026 pukul 02.05.33",
+      "objective_earned": 15,
+      "objective_bobot": 30,
+      "essay_earned": 0,
+      "essay_bobot": 0,
+      "has_ungraded_essay": false,
+      "status_keputusan": "Tidak Ada"
+    }
+  ],
+  "synced_violationLogs": [
+    {
+      "id_log": "LOG_1795025078371_W4Y",
+      "id_sesi": "SES_545712",
+      "id_ujian": "UJN_3717",
+      "nama_ujian": "Testing Mengerjakan Ujian",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "jenis_pelanggaran": "Pindah Tab",
+      "waktu_kejadian": "02.04.38",
+      "jumlah_pelanggaran": 3,
+      "status_ujian": "Dikunci Paksa",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": 50
+    },
+    {
+      "id_log": "LOG_1795025076978_ZHN",
+      "id_sesi": "SES_545712",
+      "id_ujian": "UJN_3717",
+      "nama_ujian": "Testing Mengerjakan Ujian",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "jenis_pelanggaran": "Keluar Layar Penuh",
+      "waktu_kejadian": "02.04.36",
+      "jumlah_pelanggaran": 2,
+      "status_ujian": "Berlangsung",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": null
+    },
+    {
+      "id_log": "LOG_1795025060593_4Z5",
+      "id_sesi": "SES_545712",
+      "id_ujian": "UJN_3717",
+      "nama_ujian": "Testing Mengerjakan Ujian",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "jenis_pelanggaran": "Keluar Layar Penuh",
+      "waktu_kejadian": "02.04.20",
+      "jumlah_pelanggaran": 1,
+      "status_ujian": "Berlangsung",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": null
+    },
+    {
+      "id_log": "LOG_1794890543084_BW6",
+      "id_sesi": "SES_535626",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "testing",
+      "nim": "105022410021",
+      "nama_mahasiswa": "Juan Messi Septhian Tulengkey",
+      "jenis_pelanggaran": "Copy-Paste",
+      "waktu_kejadian": "12.42.23",
+      "jumlah_pelanggaran": 1,
+      "status_ujian": "Berlangsung",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": null
+    },
+    {
+      "id_log": "LOG_DEMO_01",
+      "id_sesi": "SES_DEMO_01",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "nim": "105022510107",
+      "nama_mahasiswa": "Tuwaidan, Jeniffer Diana",
+      "jenis_pelanggaran": "Pindah Tab",
+      "waktu_kejadian": "09:24:18",
+      "jumlah_pelanggaran": 2,
+      "status_ujian": "Berlangsung",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": 82
+    },
+    {
+      "id_log": "LOG_DEMO_02",
+      "id_sesi": "SES_DEMO_02",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "nim": "105022410095",
+      "nama_mahasiswa": "Sumual, Valentino",
+      "jenis_pelanggaran": "Copy-Paste",
+      "waktu_kejadian": "09:31:04",
+      "jumlah_pelanggaran": 1,
+      "status_ujian": "Selesai",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": 78
+    },
+    {
+      "id_log": "LOG_DEMO_03",
+      "id_sesi": "SES_DEMO_03",
+      "id_ujian": "UJN_01",
+      "nama_ujian": "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      "nim": "105022410007",
+      "nama_mahasiswa": "Sahetapy, Wilman Valentino",
+      "jenis_pelanggaran": "Keluar Layar Penuh",
+      "waktu_kejadian": "09:35:46",
+      "jumlah_pelanggaran": 3,
+      "status_ujian": "Dikunci Paksa",
+      "status_keputusan": "Tidak Ada",
+      "total_nilai": 60
+    }
+  ],
+  "state_version": 35
+}
