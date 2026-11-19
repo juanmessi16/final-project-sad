@@ -12,6 +12,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const { testConnection } = require('./src/config/db');
 const { enforceHttps, immutableLogGuard } = require('./src/middlewares/securityMiddleware');
+const sessionStore = require('./src/utils/sessionStore');
 
 // Import modular routes
 const authRoutes = require('./src/routes/authRoutes');
@@ -39,8 +40,8 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Simulated-IP', 'X-Enforce-HTTPS', 'X-Device-ID']
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Logging sederhana untuk request
 app.use((req, res, next) => {
@@ -70,6 +71,82 @@ app.use('/api/sesi', sesiRoutes);
 app.use('/api/sesi', antiCurangRoutes); // Mengakomodasi endpoint POST /api/sesi/:id_sesi/pelanggaran
 app.use('/api/hasil', hasilRoutes);
 app.use('/api/dosen', dosenRoutes);
+
+// TC-05 / BR-01 Layer Kedua: Verifikasi Multi-Device Exam Session Lock
+app.post('/api/exams/:examId/start-session', (req, res) => {
+  const { examId } = req.params;
+  const { nim, username, device_id } = req.body || {};
+  const identifier = String(nim || username || '').trim();
+  const cleanDeviceId = String(device_id || req.headers['x-device-id'] || '').trim();
+
+  if (!identifier || !cleanDeviceId) {
+    return res.status(400).json({
+      success: false,
+      message: 'NIM dan device_id wajib disertakan untuk memulai sesi ujian.'
+    });
+  }
+
+  const existing = sessionStore.getActiveExamSession(identifier, examId);
+  if (existing && existing.status === 'sedang_mengerjakan' && existing.device_id !== cleanDeviceId) {
+    return res.status(409).json({
+      success: false,
+      multi_device_blocked: true,
+      message: 'Perangkat Kedua Ditolak (TC-05 / BR-01): Sesi ujian ini sedang dibuka pada perangkat/browser lain.'
+    });
+  }
+
+  const sessionRec = sessionStore.setActiveExamSession(identifier, examId, cleanDeviceId);
+  return res.status(200).json({
+    success: true,
+    session: sessionRec
+  });
+});
+
+// Sinkronisasi State Terpusat (Single Source of Truth) Lintas Akun & Lintas Browser
+app.get('/api/state', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    ...sessionStore.getFullState()
+  });
+});
+
+app.post('/api/state/sync', (req, res) => {
+  const updated = sessionStore.syncFullState(req.body || {});
+  return res.status(200).json({
+    success: true,
+    ...updated
+  });
+});
+
+// Sinkronisasi Daftar Ujian Terpusat Lintas Browser / Perangkat
+app.get('/api/exams', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    exams: sessionStore.getExams()
+  });
+});
+
+app.post('/api/exams', (req, res) => {
+  const payload = req.body;
+  if (!payload || !payload.nama_ujian) {
+    return res.status(400).json({ success: false, message: 'Data ujian tidak lengkap.' });
+  }
+  const exams = sessionStore.upsertExam(payload);
+  return res.status(200).json({ success: true, exams });
+});
+
+app.put('/api/exams/:examId', (req, res) => {
+  const { examId } = req.params;
+  const payload = { ...(req.body || {}), id_ujian: examId };
+  const exams = sessionStore.upsertExam(payload);
+  return res.status(200).json({ success: true, exams });
+});
+
+app.delete('/api/exams/:examId', (req, res) => {
+  const { examId } = req.params;
+  const exams = sessionStore.deleteExam(examId);
+  return res.status(200).json({ success: true, exams });
+});
 
 // Root fallback
 app.get('/', (req, res) => {

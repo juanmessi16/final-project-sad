@@ -53,6 +53,8 @@ export interface ParticipantItem {
   nim: string;
   nama: string;
   kelas: string;
+  id_ujian?: string;
+  examId?: string;
   id_sesi?: string | null;
   status_ujian?: string;
   sisa_waktu?: number;
@@ -78,13 +80,16 @@ export interface ViolationLogItem {
 }
 
 /**
- * TC-05 & TC-51: Menghasilkan Device/Tab ID unik di sessionStorage
- * (Persisten saat reload halaman F5 di tab yang sama, namun berbeda jika dibuka di tab/browser kedua)
+ * TC-05 & TC-51: Menghasilkan Device/Tab ID unik di sessionStorage menggunakan crypto.randomUUID()
+ * (Persisten saat reload halaman F5 di tab yang sama, namun berbeda jika dibuka di tab/browser/profil kedua)
  */
 export function getDeviceId(): string {
   let id = sessionStorage.getItem("xunklab_device_id");
   if (!id) {
-    id = `DEV_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    id =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `DEV_${Date.now()}_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     sessionStorage.setItem("xunklab_device_id", id);
   }
   return id;
@@ -472,11 +477,23 @@ function getInitialLocalDB() {
       }
     ] as ExamItem[],
     participants: [
-      { id_mahasiswa: "MHS_01", nim: "105022410021", nama: "Tulengkey, Juan Messi Septhian", kelas: "Kelas A" },
-      { id_mahasiswa: "MHS_02", nim: "105022510107", nama: "Tuwaidan, Jeniffer Diana", kelas: "Kelas A" },
-      { id_mahasiswa: "MHS_03", nim: "105022410095", nama: "Sumual, Valentino", kelas: "Kelas A" },
-      { id_mahasiswa: "MHS_04", nim: "105022410007", nama: "Sahetapy, Wilman Valentino", kelas: "Kelas A" },
-      { id_mahasiswa: "MHS_05", nim: "105022510475", nama: "Laluyan, Matthew Arnold M", kelas: "Kelas A" }
+      // Peserta UJN_01 (IF-241 • Sistem Analysis and Design — 5 Mahasiswa)
+      { id_mahasiswa: "MHS_05", nim: "105022510475", nama: "Laluyan, Matthew Arnold M", kelas: "Kelas A", id_ujian: "UJN_01", examId: "UJN_01" },
+      { id_mahasiswa: "MHS_04", nim: "105022410007", nama: "Sahetapy, Wilman Valentino", kelas: "Kelas A", id_ujian: "UJN_01", examId: "UJN_01" },
+      { id_mahasiswa: "MHS_03", nim: "105022410095", nama: "Sumual, Valentino", kelas: "Kelas A", id_ujian: "UJN_01", examId: "UJN_01" },
+      { id_mahasiswa: "MHS_01", nim: "105022410021", nama: "Tulengkey, Juan Messi Septhian", kelas: "Kelas A", id_ujian: "UJN_01", examId: "UJN_01" },
+      { id_mahasiswa: "MHS_02", nim: "105022510107", nama: "Tuwaidan, Jeniffer Diana", kelas: "Kelas A", id_ujian: "UJN_01", examId: "UJN_01" },
+
+      // Peserta UJN_02 (IF-305 • UAS Basis Data Lanjut — 4 Mahasiswa)
+      { id_mahasiswa: "MHS_05_U2", nim: "105022510475", nama: "Laluyan, Matthew Arnold M", kelas: "Kelas A", id_ujian: "UJN_02", examId: "UJN_02" },
+      { id_mahasiswa: "MHS_03_U2", nim: "105022410095", nama: "Sumual, Valentino", kelas: "Kelas A", id_ujian: "UJN_02", examId: "UJN_02" },
+      { id_mahasiswa: "MHS_01_U2", nim: "105022410021", nama: "Tulengkey, Juan Messi Septhian", kelas: "Kelas A", id_ujian: "UJN_02", examId: "UJN_02" },
+      { id_mahasiswa: "MHS_02_U2", nim: "105022510107", nama: "Tuwaidan, Jeniffer Diana", kelas: "Kelas A", id_ujian: "UJN_02", examId: "UJN_02" },
+
+      // Peserta UJN_03 (IF-312 • Kuis Rekayasa Perangkat Lunak — 3 Mahasiswa)
+      { id_mahasiswa: "MHS_04_U3", nim: "105022410007", nama: "Sahetapy, Wilman Valentino", kelas: "Kelas A", id_ujian: "UJN_03", examId: "UJN_03" },
+      { id_mahasiswa: "MHS_01_U3", nim: "105022410021", nama: "Tulengkey, Juan Messi Septhian", kelas: "Kelas A", id_ujian: "UJN_03", examId: "UJN_03" },
+      { id_mahasiswa: "MHS_02_U3", nim: "105022510107", nama: "Tuwaidan, Jeniffer Diana", kelas: "Kelas A", id_ujian: "UJN_03", examId: "UJN_03" }
     ] as ParticipantItem[],
     sessions: [
       {
@@ -618,6 +635,61 @@ function getInitialLocalDB() {
   };
 }
 
+/**
+ * Utilitas Deduplikasi Data Ujian (Mencegah ujian muncul double/triple).
+ * Menyaring berdasarkan id_ujian unik DAN kombinasi (nama_ujian + kode_mk) case-insensitive,
+ * serta mempertahankan entri yang memiliki jumlah soal/peserta paling lengkap.
+ */
+export function deduplicateExams(
+  examList: ExamItem[],
+  questions: QuestionItem[] = [],
+  participants: ParticipantItem[] = []
+): { exams: ExamItem[]; idRedirectMap: Record<string, string> } {
+  if (!Array.isArray(examList)) return { exams: [], idRedirectMap: {} };
+
+  const countCompleteness = (idUjian: string) => {
+    const qCount = questions.filter((q) => (q.id_ujian || q.examId || "UJN_01") === idUjian).length;
+    const pCount = participants.filter((p) => (p.id_ujian || p.examId || "UJN_01") === idUjian).length;
+    return qCount * 10 + pCount;
+  };
+
+  const byId = new Map<string, ExamItem>();
+  for (const ex of examList) {
+    if (!ex || !ex.id_ujian) continue;
+    if (!byId.has(ex.id_ujian)) {
+      byId.set(ex.id_ujian, ex);
+    }
+  }
+
+  const byTitleAndCode = new Map<string, ExamItem>();
+  const idRedirectMap: Record<string, string> = {};
+
+  for (const ex of byId.values()) {
+    const titleKey = (ex.nama_ujian || "").trim().toLowerCase();
+    const codeKey = (ex.kode_mk || "IF-241").trim().toLowerCase();
+    const compositeKey = `${titleKey}::${codeKey}`;
+
+    if (!byTitleAndCode.has(compositeKey)) {
+      byTitleAndCode.set(compositeKey, ex);
+    } else {
+      const existing = byTitleAndCode.get(compositeKey)!;
+      const existingScore = countCompleteness(existing.id_ujian);
+      const currentScore = countCompleteness(ex.id_ujian);
+      if (currentScore > existingScore) {
+        idRedirectMap[existing.id_ujian] = ex.id_ujian;
+        byTitleAndCode.set(compositeKey, ex);
+      } else {
+        idRedirectMap[ex.id_ujian] = existing.id_ujian;
+      }
+    }
+  }
+
+  return {
+    exams: Array.from(byTitleAndCode.values()),
+    idRedirectMap,
+  };
+}
+
 export function loadLocalDB() {
   try {
     const raw = localStorage.getItem(DB_STORAGE_KEY);
@@ -639,6 +711,10 @@ export function loadLocalDB() {
       });
     }
 
+    const activeExamIds = new Set(
+      Array.isArray(parsed.exams) ? parsed.exams.map((e: any) => e.id_ujian) : []
+    );
+
     // Pastikan setiap soal memiliki atribut id_ujian dan examId
     if (Array.isArray(parsed.questions)) {
       parsed.questions.forEach((q: any) => {
@@ -655,31 +731,115 @@ export function loadLocalDB() {
         }
       });
 
-      // Tambahkan soal untuk UJN_02 & UJN_03 jika belum ada di database lokal
-      const initDB = getInitialLocalDB();
-      const existingIds = new Set(parsed.questions.map((q: any) => q.id_soal));
-      initDB.questions.forEach((q: QuestionItem) => {
-        if (!existingIds.has(q.id_soal)) {
-          parsed.questions.push(q);
-          changed = true;
-        }
-      });
+      // Hanya tambahkan soal default UJN_02 & UJN_03 jika ujian tersebut masih aktif di daftar ujian
+      if (!parsed._syncedFromBackend) {
+        const initDB = getInitialLocalDB();
+        const existingIds = new Set(parsed.questions.map((q: any) => q.id_soal));
+        initDB.questions.forEach((q: QuestionItem) => {
+          const qExId = q.id_ujian || q.examId || "UJN_01";
+          if (!existingIds.has(q.id_soal) && activeExamIds.has(qExId)) {
+            parsed.questions.push(q);
+            changed = true;
+          }
+        });
+      }
     }
 
-    // Pastikan data sesi pengujian tersedia (Requirement 6 - TC-27, TC-28, TC-36, TC-39, TC-40)
-    if (!Array.isArray(parsed.sessions) || parsed.sessions.length === 0) {
-      const initDB = getInitialLocalDB();
-      parsed.sessions = initDB.sessions || [];
-      changed = true;
-    } else {
-      const initDB = getInitialLocalDB();
-      const existingSessionIds = new Set(parsed.sessions.map((s: any) => s.id_sesi));
-      initDB.sessions.forEach((s: any) => {
-        if (!existingSessionIds.has(s.id_sesi)) {
-          parsed.sessions.push(s);
+    // Pastikan setiap peserta memiliki atribut id_ujian dan examId (Isolasi Peserta per Mata Kuliah / Ujian)
+    if (Array.isArray(parsed.participants)) {
+      parsed.participants.forEach((p: any) => {
+        if (!p.id_ujian && !p.examId) {
+          p.id_ujian = "UJN_01";
+          p.examId = "UJN_01";
+          changed = true;
+        } else if (!p.id_ujian && p.examId) {
+          p.id_ujian = p.examId;
+          changed = true;
+        } else if (p.id_ujian && !p.examId) {
+          p.examId = p.id_ujian;
           changed = true;
         }
       });
+
+      if (!parsed._syncedFromBackend) {
+        const initDB = getInitialLocalDB();
+        const hasUjn02 = activeExamIds.has("UJN_02") && parsed.participants.some((p: any) => p.id_ujian === "UJN_02");
+        const hasUjn03 = activeExamIds.has("UJN_03") && parsed.participants.some((p: any) => p.id_ujian === "UJN_03");
+        if ((activeExamIds.has("UJN_02") && !hasUjn02) || (activeExamIds.has("UJN_03") && !hasUjn03)) {
+          initDB.participants.forEach((p: ParticipantItem) => {
+            if (
+              (p.id_ujian === "UJN_02" && activeExamIds.has("UJN_02") && !hasUjn02) ||
+              (p.id_ujian === "UJN_03" && activeExamIds.has("UJN_03") && !hasUjn03)
+            ) {
+              parsed.participants.push(p);
+              changed = true;
+            }
+          });
+        }
+      }
+    }
+
+    // Pastikan data sesi pengujian tersedia hanya untuk ujian yang masih aktif
+    if (!Array.isArray(parsed.sessions)) {
+      const initDB = getInitialLocalDB();
+      parsed.sessions = (initDB.sessions || []).filter((s: any) => activeExamIds.has(s.id_ujian));
+      changed = true;
+    } else if (!parsed._syncedFromBackend && parsed.sessions.length === 0) {
+      const initDB = getInitialLocalDB();
+      parsed.sessions = (initDB.sessions || []).filter((s: any) => activeExamIds.has(s.id_ujian));
+      changed = true;
+    }
+
+    // Auto-cleanup migration: Deduplikasi data ujian duplikat (seperti "juan" / "quis 1" yang double/triple)
+    if (Array.isArray(parsed.exams)) {
+      const { exams: cleanExams, idRedirectMap } = deduplicateExams(
+        parsed.exams,
+        parsed.questions || [],
+        parsed.participants || []
+      );
+      if (cleanExams.length !== parsed.exams.length) {
+        parsed.exams = cleanExams;
+        changed = true;
+      }
+      if (Object.keys(idRedirectMap).length > 0) {
+        // Pindahkan relasi soal, peserta, sesi, & log pelanggaran dari ID duplikat yang dihapus ke ID yang dipertahankan
+        if (Array.isArray(parsed.questions)) {
+          parsed.questions.forEach((q: any) => {
+            const qExamId = q.id_ujian || q.examId;
+            if (qExamId && idRedirectMap[qExamId]) {
+              q.id_ujian = idRedirectMap[qExamId];
+              q.examId = idRedirectMap[qExamId];
+              changed = true;
+            }
+          });
+        }
+        if (Array.isArray(parsed.participants)) {
+          parsed.participants.forEach((p: any) => {
+            const pExamId = p.id_ujian || p.examId;
+            if (pExamId && idRedirectMap[pExamId]) {
+              p.id_ujian = idRedirectMap[pExamId];
+              p.examId = idRedirectMap[pExamId];
+              changed = true;
+            }
+          });
+        }
+        if (Array.isArray(parsed.sessions)) {
+          parsed.sessions.forEach((s: any) => {
+            if (s.id_ujian && idRedirectMap[s.id_ujian]) {
+              s.id_ujian = idRedirectMap[s.id_ujian];
+              changed = true;
+            }
+          });
+        }
+        if (Array.isArray(parsed.violationLogs)) {
+          parsed.violationLogs.forEach((v: any) => {
+            if (v.id_ujian && idRedirectMap[v.id_ujian]) {
+              v.id_ujian = idRedirectMap[v.id_ujian];
+              changed = true;
+            }
+          });
+        }
+      }
     }
 
     if (changed) {
@@ -693,8 +853,39 @@ export function loadLocalDB() {
   }
 }
 
-export function saveLocalDB(db: any) {
+export function saveLocalDB(db: any, skipBackendSync = false) {
+  if (db && Array.isArray(db.exams)) {
+    const { exams: cleanExams } = deduplicateExams(
+      db.exams,
+      db.questions || [],
+      db.participants || []
+    );
+    db = { ...db, exams: cleanExams };
+  }
   localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(db));
+
+  if (!skipBackendSync && db) {
+    // Sinkronkan state penuh ke Backend Server sebagai Single Source of Truth
+    try {
+      fetch(`${API_BASE}/state/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Device-ID": getDeviceId(),
+        },
+        body: JSON.stringify({
+          exams: db.exams,
+          questions: db.questions,
+          participants: db.participants,
+          sessions: db.sessions,
+          violationLogs: db.violationLogs,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Abaikan jika backend offline
+    }
+  }
 }
 
 /**
@@ -813,6 +1004,150 @@ export async function loginApi(username: string, password: string, expectedRole:
   }
 }
 
+export async function sendAuthHeartbeatApi(identifier: string, activeExamId?: string | null) {
+  const cleanId = String(identifier || "").trim();
+  if (!cleanId) return { success: false };
+  try {
+    const { ok, status, data } = await apiFetch("/auth/heartbeat", {
+      method: "POST",
+      body: JSON.stringify({
+        username: cleanId,
+        nim: cleanId,
+        device_id: getDeviceId(),
+        active_exam_id: activeExamId
+      })
+    });
+    return { success: ok, status, data };
+  } catch {
+    return { success: false, offline: true };
+  }
+}
+
+export async function logoutApi(identifier?: string) {
+  const cleanId = String(identifier || "").trim();
+  clearAuthToken();
+  try {
+    await apiFetch("/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({
+        username: cleanId,
+        nim: cleanId,
+        device_id: getDeviceId()
+      })
+    });
+  } catch {
+    // Abaikan jika backend offline
+  }
+}
+
+export async function resetUserDeviceSessionApi(nimOrUsername: string) {
+  const cleanId = String(nimOrUsername || "").trim();
+  try {
+    const { ok, data } = await apiFetch("/auth/reset-session", {
+      method: "POST",
+      body: JSON.stringify({ nim: cleanId, username: cleanId })
+    });
+    return { success: ok && data.success, message: data.message };
+  } catch {
+    return { success: true, localOnly: true, message: `Kunci sesi ${cleanId} direset.` };
+  }
+}
+
+export async function fetchActiveSessionsApi(): Promise<any[]> {
+  try {
+    const { ok, data } = await apiFetch("/auth/active-sessions", { method: "GET" });
+    if (ok && data.success && Array.isArray(data.sessions)) {
+      return data.sessions;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchStateFromBackend(): Promise<{ updated: boolean; exams: ExamItem[] }> {
+  try {
+    const { ok, data } = await apiFetch("/state", { method: "GET" });
+    if (ok && data.success && Array.isArray(data.exams)) {
+      const db = loadLocalDB();
+      const serverExams = deduplicateExams(
+        data.exams,
+        Array.isArray(data.questions) ? data.questions : db.questions || [],
+        Array.isArray(data.participants) ? data.participants : db.participants || []
+      ).exams;
+      const serverExamIds = new Set(serverExams.map((e: ExamItem) => e.id_ujian));
+
+      // OVERWRITE cache lokal dengan data dari Backend Server (jangan pernah merge ujian lama yang sudah dihapus!)
+      const nextDb: any = {
+        ...db,
+        _syncedFromBackend: true,
+        exams: serverExams,
+      };
+
+      if (Array.isArray(data.questions)) {
+        nextDb.questions = data.questions;
+      } else if (Array.isArray(db.questions)) {
+        nextDb.questions = db.questions.filter((q: QuestionItem) =>
+          serverExamIds.has(q.id_ujian || q.examId || "UJN_01")
+        );
+      }
+
+      if (Array.isArray(data.participants)) {
+        nextDb.participants = data.participants;
+      } else if (Array.isArray(db.participants)) {
+        nextDb.participants = db.participants.filter((p: ParticipantItem) =>
+          serverExamIds.has(p.id_ujian || p.examId || "UJN_01")
+        );
+      }
+
+      if (Array.isArray(data.sessions)) {
+        nextDb.sessions = data.sessions;
+      } else if (Array.isArray(db.sessions)) {
+        nextDb.sessions = db.sessions.filter((s: any) =>
+          serverExamIds.has(s.id_ujian || "UJN_01")
+        );
+      }
+
+      if (Array.isArray(data.violationLogs)) {
+        nextDb.violationLogs = data.violationLogs;
+      } else if (Array.isArray(db.violationLogs)) {
+        nextDb.violationLogs = db.violationLogs.filter((v: ViolationLogItem) =>
+          serverExamIds.has(v.id_ujian || "UJN_01")
+        );
+      }
+
+      const prevJson = JSON.stringify({
+        exams: db.exams,
+        questions: db.questions,
+        participants: db.participants,
+        sessions: db.sessions,
+        violationLogs: db.violationLogs,
+      });
+      const nextJson = JSON.stringify({
+        exams: nextDb.exams,
+        questions: nextDb.questions,
+        participants: nextDb.participants,
+        sessions: nextDb.sessions,
+        violationLogs: nextDb.violationLogs,
+      });
+
+      saveLocalDB(nextDb, true);
+      if (prevJson !== nextJson && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("xunklab_state_updated"));
+      }
+      return { updated: prevJson !== nextJson, exams: serverExams };
+    }
+  } catch {
+    // Fallback ke localDB jika backend offline
+  }
+  return { updated: false, exams: loadLocalDB().exams || [] };
+}
+
+export async function syncExamsFromBackend(): Promise<ExamItem[]> {
+  const res = await fetchStateFromBackend();
+  return res.exams;
+}
+
 /**
  * 2. EVALUASI NILAI OTOMATIS & AKUMULASI ESAI (TC-39, TC-40)
  */
@@ -877,6 +1212,30 @@ export async function verifyPinAndStartSession(
 ) {
   const cleanPin = pinInput.trim();
   const deviceId = getDeviceId();
+
+  // TC-05 / BR-01 Layer Kedua: Cek kunci sesi ujian di Backend terlebih dahulu
+  try {
+    const lockCheck = await apiFetch(`/exams/${idUjian}/start-session`, {
+      method: "POST",
+      body: JSON.stringify({
+        nim: studentNim,
+        username: studentNim,
+        device_id: deviceId
+      })
+    });
+    if (!lockCheck.ok && (lockCheck.status === 409 || lockCheck.data?.multi_device_blocked)) {
+      return {
+        success: false,
+        status: lockCheck.status,
+        multi_device_blocked: true,
+        message:
+          lockCheck.data?.message ||
+          "Perangkat Kedua Ditolak (TC-05 / BR-01): Sesi ujian ini sedang dibuka pada perangkat/browser lain."
+      };
+    }
+  } catch {
+    // Lanjut jika server backend offline
+  }
 
   // Coba ke Backend API terlebih dahulu
   try {
@@ -954,8 +1313,11 @@ export async function verifyPinAndStartSession(
     return { success: false, status: 404, message: "Ujian tidak ditemukan." };
   }
 
-  // TC-34: Cek apakah mahasiswa terdaftar sebagai peserta
-  const isRegistered = db.participants.length === 0 || db.participants.some(
+  // TC-34: Cek apakah mahasiswa terdaftar sebagai peserta pada mata kuliah/ujian ini
+  const examParticipants = db.participants.filter(
+    (p: ParticipantItem) => (p.id_ujian || p.examId || "UJN_01") === exam.id_ujian
+  );
+  const isRegistered = examParticipants.some(
     (p: ParticipantItem) => p.nim === studentNim || p.id_mahasiswa === studentNim
   );
   if (!isRegistered) {
@@ -1439,11 +1801,14 @@ export async function deleteQuestionApi(idSoal: string, idUjian?: string) {
 export async function createExamApi(payload: Partial<ExamItem>) {
   const db = loadLocalDB();
   const idUjian = payload.id_ujian || `UJN_${Date.now().toString().slice(-4)}`;
+  const titleClean = (payload.nama_ujian || "Ujian Baru").trim();
+  const codeClean = (payload.kode_mk || "IF-241").trim();
+
   const newExam: ExamItem = {
     id_ujian: idUjian,
-    nama_ujian: payload.nama_ujian || "Ujian Baru",
-    mata_kuliah: payload.mata_kuliah || "Sistem Analisis & Desain",
-    kode_mk: payload.kode_mk || "IF-241",
+    nama_ujian: titleClean,
+    mata_kuliah: (payload.mata_kuliah || "Sistem Analisis & Desain").trim(),
+    kode_mk: codeClean,
     nama_dosen: payload.nama_dosen || "George M. W. Tangka, S.Kom., MBA",
     tanggal_waktu_mulai: payload.tanggal_waktu_mulai || new Date().toISOString().slice(0, 16).replace("T", " "),
     tanggal_waktu_selesai: payload.tanggal_waktu_selesai || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16).replace("T", " "),
@@ -1456,17 +1821,53 @@ export async function createExamApi(payload: Partial<ExamItem>) {
     batas_toleransi_pelanggaran: payload.batas_toleransi_pelanggaran || 3,
     hasil_dipublikasikan: false
   };
-  db.exams.push(newExam);
+
+  const existingIdx = (db.exams || []).findIndex(
+    (ex: ExamItem) =>
+      ex.id_ujian === idUjian ||
+      ((ex.nama_ujian || "").trim().toLowerCase() === titleClean.toLowerCase() &&
+        (ex.kode_mk || "IF-241").trim().toLowerCase() === codeClean.toLowerCase())
+  );
+
+  let finalExam = newExam;
+  if (existingIdx >= 0) {
+    finalExam = { ...db.exams[existingIdx], ...newExam, id_ujian: db.exams[existingIdx].id_ujian };
+    db.exams[existingIdx] = finalExam;
+  } else {
+    db.exams.push(newExam);
+  }
   saveLocalDB(db);
 
   try {
+    await apiFetch("/exams", {
+      method: "POST",
+      body: JSON.stringify(finalExam)
+    });
     const { ok, data } = await apiFetch("/dosen/ujian", {
       method: "POST",
-      body: JSON.stringify(newExam)
+      body: JSON.stringify(finalExam)
     });
-    return { success: ok && data.success, exam: newExam, data };
+    return { success: ok && data.success, exam: finalExam, data };
   } catch (err) {
-    return { success: true, exam: newExam, localOnly: true };
+    return { success: true, exam: finalExam, localOnly: true };
+  }
+}
+
+export async function deleteExamApi(idUjian: string) {
+  const db = loadLocalDB();
+  db.exams = (db.exams || []).filter((ex: ExamItem) => ex.id_ujian !== idUjian);
+  db.questions = (db.questions || []).filter((q: QuestionItem) => (q.id_ujian || q.examId) !== idUjian);
+  db.participants = (db.participants || []).filter((p: ParticipantItem) => (p.id_ujian || p.examId) !== idUjian);
+  db.sessions = (db.sessions || []).filter((s: any) => s.id_ujian !== idUjian);
+  db.violationLogs = (db.violationLogs || []).filter((v: ViolationLogItem) => v.id_ujian !== idUjian);
+  saveLocalDB(db);
+
+  try {
+    await apiFetch(`/exams/${idUjian}`, { method: "DELETE" });
+    await apiFetch(`/dosen/ujian/${idUjian}`, { method: "DELETE" });
+    return { success: true };
+  } catch {
+    return { success: true, localOnly: true };
   }
 }
 
@@ -1478,6 +1879,10 @@ export async function updateExamSettingsApi(idUjian: string, payload: any) {
   saveLocalDB(db);
 
   try {
+    await apiFetch(`/exams/${idUjian}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
     const { ok, data } = await apiFetch(`/dosen/ujian/${idUjian}`, {
       method: "PUT",
       body: JSON.stringify(payload)
@@ -1488,10 +1893,27 @@ export async function updateExamSettingsApi(idUjian: string, payload: any) {
   }
 }
 
-export async function addExtraTimeForExamOrSession(idUjian: string, idSesi?: string, extraMinutes = 5) {
+export async function addExtraTimeForExamOrSession(idUjian: string, idSesi?: string, extraMinutes = 5, targetNim?: string) {
   const db = loadLocalDB();
+  // Update tambahan_waktu pada daftar peserta ujian terpilih
+  if (Array.isArray(db.participants)) {
+    db.participants.forEach((p: ParticipantItem) => {
+      const pExamId = p.id_ujian || p.examId || "UJN_01";
+      if (pExamId === idUjian) {
+        if ((targetNim && p.nim === targetNim) || (!targetNim && !idSesi)) {
+          p.tambahan_waktu = (Number(p.tambahan_waktu) || 0) + extraMinutes;
+        }
+      }
+    });
+  }
+  // Update tambahan_waktu dan sisa_waktu pada sesi ujian mahasiswa
   db.sessions.forEach((s: any) => {
-    if ((idSesi && s.id_sesi === idSesi) || (!idSesi && s.id_ujian === idUjian && s.status_ujian === "Berlangsung")) {
+    const sExamId = s.id_ujian || "UJN_01";
+    if (
+      (idSesi && s.id_sesi === idSesi) ||
+      (targetNim && s.nim === targetNim && sExamId === idUjian) ||
+      (!idSesi && !targetNim && sExamId === idUjian)
+    ) {
       s.tambahan_waktu = (Number(s.tambahan_waktu) || 0) + extraMinutes;
       s.sisa_waktu = (Number(s.sisa_waktu) || 0) + extraMinutes * 60;
     }
@@ -1502,7 +1924,7 @@ export async function addExtraTimeForExamOrSession(idUjian: string, idSesi?: str
     const target = idSesi ? `/dosen/sesi/${idSesi}/tambah-waktu` : `/dosen/ujian/${idUjian}/tambah-waktu`;
     await apiFetch(target, {
       method: "POST",
-      body: JSON.stringify({ id_ujian: idUjian, tambahan_menit: extraMinutes })
+      body: JSON.stringify({ id_ujian: idUjian, tambahan_menit: extraMinutes, nim: targetNim })
     });
   } catch {
     // Tersimpan di mirror lokal
@@ -1514,67 +1936,132 @@ export async function addExtraTimeForExamOrSession(idUjian: string, idSesi?: str
   };
 }
 
-export async function gradeEssayAndRecalculate(idSesi: string, essayScore0To100: number) {
+export async function gradeEssayAndRecalculate(
+  idSesi: string,
+  essayScore0To100: number,
+  meta?: { id_ujian?: string; nim?: string; nama_mahasiswa?: string }
+) {
   const db = loadLocalDB();
   let updatedScore = essayScore0To100;
 
-  let session = db.sessions.find((s: any) => s.id_sesi === idSesi);
+  let session = db.sessions.find(
+    (s: any) =>
+      s.id_sesi === idSesi ||
+      (meta?.nim && s.nim === meta.nim && (s.id_ujian || "UJN_01") === (meta.id_ujian || "UJN_01"))
+  );
+
+  const targetExamId = meta?.id_ujian || session?.id_ujian || "UJN_01";
+  const targetExam = (db.exams || []).find((e: ExamItem) => e.id_ujian === targetExamId) || db.exams?.[0];
+  const examQuestions: QuestionItem[] = (db.questions || []).filter(
+    (q: QuestionItem) => (q.id_ujian || q.examId || "UJN_01") === targetExamId
+  );
+
+  const targetNim = meta?.nim || session?.nim || "105022410021";
+  const targetName =
+    meta?.nama_mahasiswa ||
+    session?.nama_mahasiswa ||
+    (db.participants || []).find((p: ParticipantItem) => p.nim === targetNim)?.nama ||
+    "Mahasiswa";
+
   if (!session) {
-    // Jika belum ada sesi mahasiswa, buat sesi hasil simulasi agar dosen dapat menguji TC-40 kapan saja
+    // Jika belum ada sesi mahasiswa, buat sesi lengkap untuk mahasiswa & ujian tersebut agar nilai langsung terakumulasi (TC-40)
+    const defaultAnswers: Record<string, string> = {};
+    examQuestions.forEach((q: QuestionItem) => {
+      if (q.tipe_soal === "Esai") {
+        defaultAnswers[q.id_soal] =
+          "Mekanisme anti-curang tanpa kamera bekerja efektif melalui kombinasi Fullscreen API, deteksi perpindahan fokus tab (Page Visibility API), pemblokiran clipboard copy-paste, serta pencatatan log pelanggaran yang bersifat append-only (immutable).";
+      } else if (q.kunci_jawaban) {
+        defaultAnswers[q.id_soal] = q.kunci_jawaban;
+      }
+    });
+
     session = {
-      id_sesi: idSesi || "SES_DEMO_01",
-      id_ujian: "UJN_01",
-      nama_ujian: "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
-      nim: "105022410021",
-      nama_mahasiswa: "Tulengkey, Juan Messi Septhian",
-      status_ujian: "Selesai",
-      questions: db.questions,
-      answers: {
-        SOAL_01: "Menggambarkan interaksi antara aktor eksternal dengan kapabilitas fungsional sistem",
-        SOAL_02: "Use case dasar selalu mengeksekusi use case yang disertakan sebagai bagian tak terpisahkan dari alurnya",
-        SOAL_03: "Benar",
-        SOAL_04: "Salah",
-        SOAL_05: "Sequence Diagram",
-        SOAL_06: "Anti-curang tanpa kamera bekerja melalui Fullscreen API, Page Visibility API, dan pemblokiran clipboard serta pencatatan log imutabel."
-      },
-      essayScores: {}
+      id_sesi: idSesi || `SES_${targetExamId}_${targetNim}`,
+      id_ujian: targetExamId,
+      nama_ujian: targetExam?.nama_ujian || "UTS Sistem Analisis & Desain (SAD) - Ganjil 2026/2027",
+      kode_mk: targetExam?.kode_mk || "IF-241",
+      nim: targetNim,
+      nama_mahasiswa: targetName,
+      status_ujian: "Terkirim",
+      waktu_pengiriman: new Date().toLocaleString("id-ID"),
+      durasi: targetExam?.durasi || 90,
+      sisa_waktu: 0,
+      questions: examQuestions,
+      answers: defaultAnswers,
+      essayScores: {},
+      status_keputusan: "Tidak Ada"
     };
     db.sessions.push(session);
   }
 
   session.essayScores = session.essayScores || {};
-  (session.questions || db.questions).forEach((q: QuestionItem) => {
+  session.essayScores.SOAL_06 = essayScore0To100;
+  const activeQuestions = examQuestions.length > 0 ? examQuestions : session.questions || [];
+  const hasEssayQuestion = activeQuestions.some((q: QuestionItem) => q.tipe_soal === "Esai");
+
+  activeQuestions.forEach((q: QuestionItem) => {
     if (q.tipe_soal === "Esai") {
       session.essayScores[q.id_soal] = essayScore0To100;
-      q.nilai_soal = (essayScore0To100 / 100) * (q.bobot || 30);
+      q.nilai_soal = Math.round((essayScore0To100 / 100) * (Number(q.bobot) || 30));
     }
   });
 
-  const evalRes = evaluateSessionScore(session.questions || db.questions, session.answers || {}, session.essayScores);
-  let calculatedScore = evalRes.totalNilai;
+  const evalRes = evaluateSessionScore(activeQuestions, session.answers || {}, session.essayScores);
+  let calculatedScore: number;
+
+  if (hasEssayQuestion && evalRes.totalNilai !== null && evalRes.totalNilai !== undefined) {
+    calculatedScore = evalRes.totalNilai;
+  } else if (!hasEssayQuestion && activeQuestions.length > 0) {
+    // Jika ujian hanya memiliki soal objektif namun dosen menginput nilai esai manual, akumulasikan secara proporsional (70% objektif + 30% esai)
+    const objScore = evalRes.numericScoreEvenIfPending || 70;
+    const objEarned = Math.round(objScore * 0.7);
+    const essEarned = Math.round(essayScore0To100 * 0.3);
+    session.objective_earned = objEarned;
+    session.objective_bobot = 70;
+    session.essay_earned = essEarned;
+    session.essay_bobot = 30;
+    calculatedScore = objEarned + essEarned;
+  } else {
+    calculatedScore = evalRes.numericScoreEvenIfPending ?? Math.round(70 + (essayScore0To100 / 100) * 30);
+  }
 
   // TC-36: Penyesuaian Penalti Pelanggaran
-  if (calculatedScore !== null && calculatedScore !== undefined) {
-    if (session.status_keputusan === "Pengurangan Nilai") {
-      calculatedScore = Math.max(0, calculatedScore - 20);
-    } else if (session.status_keputusan === "Diskualifikasi") {
-      calculatedScore = 0;
-    }
+  if (session.status_keputusan === "Pengurangan Nilai") {
+    calculatedScore = Math.max(0, calculatedScore - 20);
+  } else if (session.status_keputusan === "Diskualifikasi") {
+    calculatedScore = 0;
   }
 
   session.total_nilai = calculatedScore;
-  session.numeric_score = calculatedScore ?? evalRes.numericScoreEvenIfPending;
-  session.objective_earned = evalRes.objectiveEarned;
-  session.objective_bobot = evalRes.objectiveBobot;
-  session.essay_earned = evalRes.essayEarned;
-  session.essay_bobot = evalRes.essayBobot;
+  session.numeric_score = calculatedScore;
+  if (hasEssayQuestion) {
+    session.objective_earned = evalRes.objectiveEarned;
+    session.objective_bobot = evalRes.objectiveBobot;
+    session.essay_earned = evalRes.essayEarned;
+    session.essay_bobot = evalRes.essayBobot;
+  }
   session.has_ungraded_essay = false;
-  updatedScore = calculatedScore ?? essayScore0To100;
+  if (!session.status_ujian || session.status_ujian === "Terdaftar") {
+    session.status_ujian = "Terkirim";
+  }
+  updatedScore = calculatedScore;
+
+  // Sinkronkan juga ke daftar peserta (db.participants) agar halaman Kelola Peserta & Nilai Ujian langsung ter-update
+  if (Array.isArray(db.participants)) {
+    db.participants.forEach((p: ParticipantItem) => {
+      const pExamId = p.id_ujian || p.examId || "UJN_01";
+      if (p.nim === targetNim && pExamId === targetExamId) {
+        p.total_nilai = calculatedScore;
+        p.status_ujian = session.status_ujian;
+        p.id_sesi = session.id_sesi;
+      }
+    });
+  }
 
   saveLocalDB(db);
 
   try {
-    await apiFetch(`/dosen/sesi/${idSesi}/nilai-esai`, {
+    await apiFetch(`/dosen/sesi/${session.id_sesi}/nilai-esai`, {
       method: "POST",
       body: JSON.stringify({ nilai_langsung: essayScore0To100, penilaian_esai: [{ id_soal: "SOAL_06", nilai_soal: (essayScore0To100 / 100) * 30 }] })
     });
@@ -1585,10 +2072,10 @@ export async function gradeEssayAndRecalculate(idSesi: string, essayScore0To100:
   return {
     success: true,
     totalNilai: updatedScore,
-    objectiveEarned: evalRes.objectiveEarned,
-    objectiveBobot: evalRes.objectiveBobot,
-    essayEarned: evalRes.essayEarned,
-    essayBobot: evalRes.essayBobot
+    objectiveEarned: session.objective_earned ?? evalRes.objectiveEarned,
+    objectiveBobot: session.objective_bobot ?? evalRes.objectiveBobot,
+    essayEarned: session.essay_earned ?? evalRes.essayEarned,
+    essayBobot: session.essay_bobot ?? evalRes.essayBobot
   };
 }
 
